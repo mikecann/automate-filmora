@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "automate-filmora"
+version = "0.1.0"
+description = "Inspect and document Wondershare Filmora project files"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Mike Cann" }]
+dependencies = []
+
+[project.scripts]
+filmora-project = "filmora_wfp.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["filmora_wfp*"]

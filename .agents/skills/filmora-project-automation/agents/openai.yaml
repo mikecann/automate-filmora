@@ -1,0 +1,4 @@
+interface:
+  display_name: "Filmora Project Automation"
+  short_description: "Inspect and automate Filmora project files"
+  default_prompt: "Use $filmora-project-automation to inspect and document this Filmora project safely."
