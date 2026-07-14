@@ -54,4 +54,5 @@ The main `timeline.wesproj` is JSON with these observed top-level fields:
 compound clips and title resources. `trackInfos[].clipList[]` contains the actual
 edit decisions.
 
-See [timeline.md](timeline.md) and [titles.md](titles.md) for current field maps.
+See [timeline.md](timeline.md), [titles.md](titles.md), and
+[compound-title-cards.md](compound-title-cards.md) for current field maps.

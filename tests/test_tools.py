@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-from filmora_wfp import WfpArchive, WfpError, diff_projects, inspect_project, list_titles, validate_project
+from filmora_wfp import (
+    WfpArchive,
+    WfpError,
+    clone_title_cards,
+    diff_projects,
+    inspect_project,
+    list_titles,
+    validate_project,
+)
 
-from tests.helpers import write_project
+from tests.helpers import write_cloneable_title_project, write_project
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
@@ -57,6 +66,63 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 with self.assertRaises(WfpError):
                     archive.safe_extract(root / "output")
             self.assertFalse((root / "escape.txt").exists())
+
+    def test_clone_title_cards_writes_a_new_graph_without_touching_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            output = root / "completed.wfp"
+            source_before = source.read_bytes()
+            cards = [
+                {
+                    "start_ticks": 50_000_000,
+                    "heading": "2. Next Tip",
+                    "subheading": "A useful subtitle",
+                    "heading_font_size": 72,
+                    "heading_scale_x": 0.7,
+                    "subheading_font_size": 32,
+                    "subheading_scale_x": 0.45,
+                }
+            ]
+
+            result = clone_title_cards(
+                source,
+                output,
+                template_timeline_id=10,
+                cards=cards,
+            )
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(output.is_file())
+            self.assertEqual(result["created_cards"][0]["timeline_id"], 13)
+
+            titles = list_titles(output)
+            self.assertIn("2. Next Tip", [title["text"] for title in titles])
+            with WfpArchive(output) as archive:
+                main = archive.main_timeline()
+                current = next(
+                    timeline
+                    for timeline in main["timelineInfos"]
+                    if timeline["timelineId"] == main["currentTimelineId"]
+                )
+                placements = [
+                    clip
+                    for track in current["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip.get("timelineId") == 13
+                ]
+                self.assertEqual(len(placements), 2)
+                self.assertEqual({clip["tlBegin"] for clip in placements}, {50_000_000})
+                self.assertEqual(len(archive.timeline_members()), 3)
+
+            with zipfile.ZipFile(output) as archive:
+                project_info = archive.read("ProjectFolder/project_info.json")
+            self.assertEqual(json.loads(project_info)["proj_zip_save_path"], str(output.resolve()))
+
+            output_before = output.read_bytes()
+            with self.assertRaises(WfpError):
+                clone_title_cards(source, output, template_timeline_id=10, cards=cards)
+            self.assertEqual(output.read_bytes(), output_before)
 
 
 if __name__ == "__main__":

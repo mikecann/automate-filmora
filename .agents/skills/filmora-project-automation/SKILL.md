@@ -17,7 +17,8 @@ actual project and Filmora build before asserting field semantics.
   experiment proves their meaning.
 - Do not run third-party Filmora executables. Inspect source code only.
 - If the user requests a mutation, create a new output file and make one narrow,
-  named change. There is no generic writer yet.
+  named change. The only current writer clones the observed compound title-card
+  graph; there is no generic writer.
 
 ## Inspect a project
 
@@ -76,3 +77,16 @@ Only proceed after the field has a repeatable before/after mapping.
 7. Save it again in Filmora and confirm the intended change survives.
 
 Do not improvise archive rewrites with one-off shell substitutions.
+
+For a project containing the observed three-timeline compound title-card graph,
+use the copy-only command instead of editing ZIP members directly:
+
+```bash
+python3 -m filmora_wfp clone-title-cards input.wfp output.wfp \
+  --template-timeline <outer-timeline-id> \
+  --spec cards.json \
+  --expect-sha256 <source-sha256>
+```
+
+Read [references/format-map.md](references/format-map.md) and
+`docs/format/compound-title-cards.md` first. The output must not already exist.

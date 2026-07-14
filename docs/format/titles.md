@@ -27,3 +27,17 @@ section card contains:
 Changing title text is a promising first write experiment because `Text` and
 `TextData[0].CharData` are directly readable. Both fields must be tested together,
 and every edit must target a copied project.
+
+## Observed sizing relationships
+
+Across five AI Tips heading cards, measuring the bundled Bebas Neue font at the
+stored `FontSize` produced this exact relationship within rounding:
+
+```text
+ScaleX = rendered text width / 700
+ScaleY = FontSize / 360
+```
+
+The scale values and the matching transform-effect percentages are serialized at
+float32 precision. Subtitle sizing is less exact and still requires explicit
+values in write experiments.

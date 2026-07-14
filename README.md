@@ -1,17 +1,17 @@
 # automate-filmora
 
-Experimental, evidence-driven tooling for inspecting and eventually automating
+Experimental, evidence-driven tooling for inspecting and narrowly automating
 Wondershare Filmora project files.
 
 Filmora 15 `.wfp` projects are ZIP archives containing JSON project metadata,
 timeline documents, thumbnails, and references to external media. This repository
-documents the observed format and provides read-only tools for exploring it.
+documents the observed format and provides copy-only tools for exploring it.
 
 ## Safety contract
 
 - Treat Filmora's format as undocumented and version-specific.
 - Never modify the only copy of a project.
-- Keep mutation out of the CLI until a round-trip can be tested against Filmora.
+- Every mutation must write a new project path and refuse to overwrite either file.
 - Do not commit real `.wfp` files, bundled media, or private absolute paths.
 - Record the Filmora build and the controlled experiment behind every claimed field.
 
@@ -35,9 +35,25 @@ output. Paths are reduced to basenames unless `--reveal-paths` is supplied.
 python3 -m filmora_wfp unpack project.wfp work/unpacked-project
 ```
 
+The first narrow writer clones a known compound title-card graph. It requires an
+existing card made by the same Filmora build, exact timeline ticks, explicit text
+metrics, and a new output path:
+
+```bash
+python3 -m filmora_wfp clone-title-cards project.wfp completed.wfp \
+  --template-timeline <outer-timeline-id> \
+  --spec work/title-cards.json \
+  --expect-sha256 <source-sha256>
+```
+
+The specification is a JSON array. Each entry supplies `start_ticks`, `heading`,
+`subheading`, `heading_font_size`, `heading_scale_x`, `subheading_font_size`, and
+`subheading_scale_x`. The command refuses an existing output and aborts if the
+source changes while the copy is being written.
+
 ## Repository map
 
-- `filmora_wfp/`: dependency-free inspection, validation, diff, and unpack tools.
+- `filmora_wfp/`: dependency-free inspection, validation, diff, unpack, and narrow copy tools.
 - `docs/format/`: observed project structure and field notes.
 - `docs/experiments.md`: repeatable reverse-engineering protocol.
 - `docs/case-studies/`: sanitized observations from real projects.
@@ -53,11 +69,12 @@ The tools can currently:
 - decode title text and typography stored as JSON inside `scriptBuf`;
 - locate nested timeline placements used for compound clips;
 - compare two controlled project saves, including embedded JSON changes;
-- detect malformed archives, unresolved timeline references, and unsafe ZIP paths.
+- detect malformed archives, unresolved timeline references, and unsafe ZIP paths;
+- clone the observed three-timeline section-card graph into a new project copy.
 
-Writing projects is deliberately not implemented yet. The first writer should make
-one narrow change to a copied project, preserve unrelated bytes where possible, and
-round-trip through the exact Filmora build that created it.
+The title-card cloner is deliberately not a generic WFP writer. A generated copy
+must still be opened and saved in the exact Filmora build that created its template
+before it should be trusted for production editing.
 
 ## Related work
 

@@ -35,5 +35,6 @@
 
 ## Detailed repository docs
 
-Use `docs/format/README.md`, `docs/format/timeline.md`, and
-`docs/format/titles.md` for the current evidence and open questions.
+Use `docs/format/README.md`, `docs/format/timeline.md`,
+`docs/format/titles.md`, and `docs/format/compound-title-cards.md` for the current
+evidence and open questions.

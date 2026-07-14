@@ -1,4 +1,4 @@
-"""Inspect, validate, unpack, and diff Filmora WFP project files."""
+"""Inspect, validate, diff, and narrowly copy Filmora WFP project files."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
 from .diffing import diff_projects
+from .title_cards import clone_title_cards, load_title_card_spec
 
 
 def _dump_json(value: Any) -> None:
@@ -173,6 +174,21 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--reveal-paths", action="store_true")
     diff_parser.add_argument("--json", action="store_true")
 
+    clone_parser = subparsers.add_parser(
+        "clone-title-cards",
+        help="Clone an observed compound title-card template into a new project copy",
+    )
+    clone_parser.add_argument("project")
+    clone_parser.add_argument("output")
+    clone_parser.add_argument("--template-timeline", required=True, type=int)
+    clone_parser.add_argument(
+        "--spec",
+        required=True,
+        help="JSON array of title cards and exact timeline ticks",
+    )
+    clone_parser.add_argument("--expect-sha256", help="Refuse if the source fingerprint has changed")
+    clone_parser.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -205,6 +221,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                 reveal_paths=args.reveal_paths,
             )
             _dump_json(result) if args.json else _print_diff(result)
+            return 0
+        if args.command == "clone-title-cards":
+            result = clone_title_cards(
+                args.project,
+                args.output,
+                template_timeline_id=args.template_timeline,
+                cards=load_title_card_spec(args.spec),
+                expected_source_sha256=args.expect_sha256,
+            )
+            if args.json:
+                _dump_json(result)
+            else:
+                print(result["output"])
+                print("Created title cards: {0}".format(len(result["created_cards"])))
             return 0
     except WfpError as exc:
         print("error: {0}".format(exc), file=sys.stderr)
