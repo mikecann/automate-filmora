@@ -1,0 +1,68 @@
+# Effects, transitions, and opaque `userData`
+
+Status: structural observations from Filmora 15.6.4.11894. Effect display names
+are useful evidence, but IDs, numeric parameters, and base64 payloads remain
+version-specific.
+
+## Effects
+
+Clip effects live under:
+
+```text
+effectChainList[].effectList[]
+```
+
+Observed fields include `id`, `display`, `paramList`, `userData`, and instance
+identifiers. A parameter commonly stores its value in
+`paramList[].fxParam.unValue`, but its type varies.
+
+Default insertion of a generated A/V file added:
+
+- visual: crop/pan/zoom and transform;
+- audio: clip volume, channel selection, volume, fades, and ducking.
+
+The studied production project also contained colour, curve, wheel, sharpen,
+object-tracking, equalizer, and title-animation effects. The mapper reports every
+observed ID/display pair, count, parameter name, value type, and numeric range.
+
+Effect instance IDs are separate from clip IDs. A split duplicated the default
+effect chains onto the new halves and allocated fresh effect instance IDs.
+
+## Transitions
+
+Transitions are not a separate top-level timeline list. They appear on clips as:
+
+```text
+preTransition
+postTransition
+```
+
+Each can contain an ID, display name, range information, parameters, and
+`userData`. The studied project had 61 canonical transition placements across
+cuts, pushes, diagonal transitions, fades, and audio fades.
+
+Placement matters. A transition with the same display name can appear as a pre or
+post transition, so automation must preserve both its body and its owning side.
+
+## Base64 `userData`
+
+`userData` appears at project, timeline, track, clip, effect, and transition
+scopes. The mapper decodes base64 only to classify the payload. It reports:
+
+- scope and numeric key;
+- decoded length;
+- whether the bytes are UTF-8, JSON, UUID-like, or four-byte little-endian data;
+- whether readable values match known timeline IDs or media folders.
+
+It does not rewrite or assign names to unknown keys.
+
+Two clip-level relationships repeated across the entire studied project:
+
+- key `6`: all 584 four-byte little-endian values matched the containing
+  timeline ID;
+- key `10`: 392 UTF-8 values matched archive media-folder IDs, while another 115
+  readable payloads did not.
+
+Those are strong observations for this file, not enough evidence for a generic
+writer. Key `10` clearly has more than one payload role. Preserve all unknown
+entries byte-for-byte and require a controlled diff before changing any of them.

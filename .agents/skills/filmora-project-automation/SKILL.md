@@ -27,11 +27,19 @@ Run from the repository root:
 ```bash
 python3 -m filmora_wfp validate "/path/to/project.wfp"
 python3 -m filmora_wfp inspect "/path/to/project.wfp"
+python3 -m filmora_wfp map "/path/to/project.wfp"
+python3 -m filmora_wfp eval-format "/path/to/project.wfp"
 python3 -m filmora_wfp titles "/path/to/project.wfp"
 ```
 
 Use `--json` when consuming the result programmatically. Paths are redacted by
 default; use `--reveal-paths` only when resolving local media is required.
+
+Use `inspect` for a quick human summary. Use `map --json` before any new format
+claim or mutation: it preserves duplicate JSON keys, builds the canonical
+timeline graph, profiles normalized fields and enums, checks identifiers, and
+classifies opaque payloads without assigning semantics. Use `eval-format` as the
+repeatable compatibility gate for a real project or a future Filmora build.
 
 Read [references/format-map.md](references/format-map.md) when tracing timeline,
 clip, title, effect, or transition fields.
@@ -42,7 +50,10 @@ Require two saves from the same Filmora build with exactly one UI change between
 them. Then run:
 
 ```bash
+python3 -m filmora_wfp map before.wfp --json > work/before-map.json
+python3 -m filmora_wfp map after.wfp --json > work/after-map.json
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
+python3 -m filmora_wfp eval-format after.wfp
 ```
 
 Narrow noisy output with `--member` and `--max-changes`. Repeat the experiment to
@@ -72,11 +83,13 @@ Only proceed after the field has a repeatable before/after mapping.
 2. Copy the input and change the minimum JSON fields.
 3. Preserve unrelated members and avoid regenerating UUIDs.
 4. Validate JSON, archive paths, and timeline references.
-5. Audit the generated copy against its source with
+5. Run `filmora_wfp eval-format` on the generated copy.
+6. Audit the generated copy against its source with
    `filmora_wfp audit-title-card-copy`.
-6. Compare input/output with `filmora_wfp diff`.
-7. Open the output in the originating Filmora build as the final gate.
-8. Save it again in Filmora and confirm the intended change survives.
+7. Compare input/output with `filmora_wfp diff` and semantic `map` output.
+8. Open the output in the originating Filmora build as the final gate.
+9. Save it again in Filmora and confirm the intended change survives. Expect
+   Filmora to rotate protected metadata and possibly renumber timeline IDs.
 
 Do not improvise archive rewrites with one-off shell substitutions.
 

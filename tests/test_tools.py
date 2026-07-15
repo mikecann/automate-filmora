@@ -13,8 +13,10 @@ from filmora_wfp import (
     audit_title_card_copy,
     clone_title_cards,
     diff_projects,
+    evaluate_project,
     inspect_project,
     list_titles,
+    map_project,
     validate_project,
 )
 
@@ -22,6 +24,111 @@ from tests.helpers import write_cloneable_title_project, write_project
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_format_eval_checks_graph_cache_and_title_invariants(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = write_cloneable_title_project(Path(temporary) / "fixture.wfp")
+
+            result = evaluate_project(project)
+
+            self.assertTrue(result["valid"], result)
+            self.assertTrue(all(probe["passed"] for probe in result["probes"]), result)
+            self.assertEqual(result["observations"]["standalone_only_timelines"], 0)
+
+    def test_map_profiles_canonical_graph_and_opaque_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = write_cloneable_title_project(Path(temporary) / "fixture.wfp")
+
+            result = map_project(project)
+
+            self.assertEqual(result["source"]["path"], "<path>/fixture.wfp")
+            self.assertEqual(result["timeline"]["canonical_timeline_count"], 3)
+            self.assertEqual(result["timeline"]["standalone_cache"]["exact_copy_count"], 2)
+            clip_counts = {
+                row["type"]: row["count"] for row in result["timeline"]["clip_types"]
+            }
+            self.assertEqual(clip_counts, {"4": 2, "6": 1, "7": 1, "16": 1})
+            self.assertEqual(result["titles"]["script_buffer_count"], 2)
+            self.assertEqual(result["titles"]["declared_size_matches_utf8_plus_one"], 2)
+            self.assertEqual(result["titles"]["text_mirror_matches"], 2)
+            self.assertEqual(result["effects"][0]["id"], "transform")
+            self.assertEqual(result["effects"][0]["count"], 2)
+            key_six = next(row for row in result["user_data"] if row["key"] == 6)
+            self.assertEqual(key_six["formats"], {"uint32_le": 5})
+            self.assertEqual(key_six["matches_containing_timeline"], 5)
+            self.assertTrue(result["identifiers"]["media_folders"]["timeline_media_id_resolves"])
+
+            title_text_field = next(
+                field
+                for field in result["titles"]["schema"]["fields"]
+                if field["path"] == "$.Text"
+            )
+            self.assertEqual(title_text_field["examples"], ["<text:11 chars>", "<text:17 chars>"])
+
+    def test_map_preserves_duplicate_json_keys_for_schema_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_project(root / "source.wfp")
+            project = root / "duplicates.wfp"
+            with zipfile.ZipFile(source, "r") as before, zipfile.ZipFile(
+                project, "w", compression=zipfile.ZIP_DEFLATED
+            ) as after:
+                for info in before.infolist():
+                    after.writestr(info, before.read(info))
+                after.writestr(
+                    "ProjectFolder/Medias/medias_info.json",
+                    '{"media_structure":{"media_item":"one","media_item":"two"}}',
+                )
+
+            result = map_project(project)
+
+            duplicates = result["documents"]["medias_info"]["duplicate_keys"]
+            self.assertEqual(
+                duplicates,
+                [
+                    {
+                        "path": "$.media_structure",
+                        "key": "media_item",
+                        "objects": 1,
+                        "extra_occurrences": 1,
+                        "max_per_object": 2,
+                    }
+                ],
+            )
+
+    def test_format_eval_rejects_mismatched_title_text_mirror(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_project(root / "source.wfp")
+            project = root / "mismatched-title.wfp"
+            with zipfile.ZipFile(source, "r") as before, zipfile.ZipFile(
+                project, "w", compression=zipfile.ZIP_DEFLATED
+            ) as after:
+                for info in before.infolist():
+                    data = before.read(info)
+                    if info.filename.endswith("/timeline.wesproj"):
+                        timeline = json.loads(data)
+                        title_clip = next(
+                            clip
+                            for timeline_info in timeline["timelineInfos"]
+                            for track in timeline_info["trackInfos"]
+                            for clip in track["clipList"]
+                            if "scriptBuf" in clip
+                        )
+                        script = json.loads(title_clip["scriptBuf"])
+                        script["TextData"][0]["CharData"] = "Different mirrored text"
+                        title_clip["scriptBuf"] = json.dumps(script)
+                        title_clip["scriptBufSize"] = len(title_clip["scriptBuf"].encode("utf-8")) + 1
+                        data = json.dumps(timeline).encode("utf-8")
+                    after.writestr(info, data)
+
+            result = evaluate_project(project)
+
+            self.assertFalse(result["valid"], result)
+            text_probe = next(
+                probe for probe in result["probes"] if probe["name"] == "title_text_mirrors_match"
+            )
+            self.assertFalse(text_probe["passed"])
+
     def test_inspect_and_titles_decode_nested_script_buffer(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = write_project(Path(temporary) / "fixture.wfp")

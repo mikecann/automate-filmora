@@ -11,6 +11,8 @@ from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
 from .audit import audit_title_card_copy
 from .diffing import diff_projects
+from .evals import evaluate_project
+from .mapping import map_project
 from .title_cards import clone_title_cards, load_title_card_spec
 
 
@@ -161,6 +163,66 @@ def _print_diff(result: Dict[str, Any]) -> None:
         print("Output truncated. Increase --max-changes or narrow --member.")
 
 
+def _print_map(result: Dict[str, Any]) -> None:
+    source = result["source"]
+    archive = result["archive"]
+    timeline = result["timeline"]
+    titles = result["titles"]
+    identifiers = result["identifiers"]
+    print("Filmora: {0} on {1}".format(source.get("filmora_version") or "?", source.get("os") or "?"))
+    print(
+        "Archive: {0} members, {1} JSON document kinds".format(
+            archive.get("member_count"), len(result.get("documents") or {})
+        )
+    )
+    print(
+        "Canonical edit graph: {0} timelines, {1} title scripts, {2} effects, {3} transitions".format(
+            timeline.get("canonical_timeline_count"),
+            titles.get("script_buffer_count"),
+            sum(effect.get("count", 0) for effect in result.get("effects") or []),
+            sum(transition.get("count", 0) for transition in result.get("transitions") or []),
+        )
+    )
+    print("Clip types:")
+    for clip_type in timeline.get("clip_types") or []:
+        print("  type={0} count={1}".format(clip_type.get("type"), clip_type.get("count")))
+    cache = timeline.get("standalone_cache") or {}
+    print(
+        "Standalone timeline copies: {0} exact, {1} standalone-only, {2} conflicting".format(
+            cache.get("exact_copy_count", 0),
+            cache.get("standalone_only_count", 0),
+            cache.get("conflicting_copy_count", 0),
+        )
+    )
+    timeline_ids = identifiers.get("timeline_ids") or {}
+    print(
+        "Timeline references: {0} total, {1} unresolved".format(
+            timeline_ids.get("references", 0), len(timeline_ids.get("unresolved_references") or [])
+        )
+    )
+    duplicate_documents = [
+        (kind, len(document.get("duplicate_keys") or []))
+        for kind, document in (result.get("documents") or {}).items()
+        if document.get("duplicate_keys")
+    ]
+    if duplicate_documents:
+        print("Duplicate JSON keys:")
+        for kind, count in duplicate_documents:
+            print("  {0}: {1} repeated path/key pair(s)".format(kind, count))
+    print("Use --json for the full normalized field, enum, effect, transition, and userData map.")
+
+
+def _print_evaluation(result: Dict[str, Any]) -> None:
+    print("FORMAT EVAL PASSED" if result.get("valid") else "FORMAT EVAL FAILED")
+    for probe in result.get("probes") or []:
+        status = "PASS" if probe.get("passed") else "FAIL"
+        print("{0} {1}: {2}".format(status, probe.get("name"), probe.get("detail")))
+    observations = result.get("observations") or {}
+    duplicate_keys = observations.get("duplicate_json_keys") or []
+    if duplicate_keys:
+        print("OBSERVED duplicate JSON key patterns: {0}".format(len(duplicate_keys)))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="filmora-project", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -191,6 +253,21 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--max-changes", type=int, default=200)
     diff_parser.add_argument("--reveal-paths", action="store_true")
     diff_parser.add_argument("--json", action="store_true")
+
+    map_parser = subparsers.add_parser(
+        "map",
+        help="Inventory normalized JSON paths, enums, references, effects, and opaque payloads",
+    )
+    map_parser.add_argument("project")
+    map_parser.add_argument("--reveal-paths", action="store_true")
+    map_parser.add_argument("--json", action="store_true")
+
+    eval_parser = subparsers.add_parser(
+        "eval-format",
+        help="Run repeatable archive, reference, cache, title, and routing compatibility probes",
+    )
+    eval_parser.add_argument("project")
+    eval_parser.add_argument("--json", action="store_true")
 
     clone_parser = subparsers.add_parser(
         "clone-title-cards",
@@ -249,6 +326,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             _dump_json(result) if args.json else _print_diff(result)
             return 0
+        if args.command == "map":
+            result = map_project(args.project, reveal_paths=args.reveal_paths)
+            _dump_json(result) if args.json else _print_map(result)
+            return 0
+        if args.command == "eval-format":
+            result = evaluate_project(args.project)
+            _dump_json(result) if args.json else _print_evaluation(result)
+            return 0 if result.get("valid") else 1
         if args.command == "clone-title-cards":
             result = clone_title_cards(
                 args.project,

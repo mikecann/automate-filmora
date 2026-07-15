@@ -32,5 +32,10 @@ Observed Filmora-created backup/save-as files changed `project_date_modify`,
 `timeline_mediaId`. That is consistent with an integrity relationship, but does
 not prove its algorithm. Generated copies preserve all four fields.
 
+A second Filmora-native Save As kept the semantic graph unchanged but again
+rotated those three fields, rewrote the stored filename and path, and renumbered
+every timeline ID with matching reference updates. `project_source` must stay
+opaque. There is still no evidence that external tooling can calculate it.
+
 The project name and stored save path may be updated for a copy. Filmora still
 uses the actual opened path as the project location.

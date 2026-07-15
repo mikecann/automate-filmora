@@ -25,6 +25,10 @@ ProjectFolder/
 The exact member set varies. Compound clips can also have their own media folders,
 `timeline.wesproj`, and `extra.json` files.
 
+Observed archives can also contain `ProjectFolder/functionExtraData.json`, media
+metadata, several thumbnails, and one cover thumbnail. Compression is mixed:
+Filmora may store some members and deflate others.
+
 ## Root project metadata
 
 `ProjectFolder/project_info.json` provides the routing information needed to find
@@ -54,6 +58,27 @@ The main `timeline.wesproj` is JSON with these observed top-level fields:
 compound clips and title resources. `trackInfos[].clipList[]` contains the actual
 edit decisions.
 
+## Map before interpreting
+
+Run the structural mapper before making assumptions about a project:
+
+```bash
+python3 -m filmora_wfp map project.wfp --json > work/format-map.json
+python3 -m filmora_wfp eval-format project.wfp
+```
+
+The mapper preserves duplicate JSON object keys while profiling the document.
+That matters because an observed `medias_info.json` serialized every
+`media_structure.Folder.media_item` as another key in the same object. A normal
+`json.load()` keeps only the last one.
+
+The mapper also de-duplicates timeline definitions semantically. The main media
+folder can contain many nested timelines, while individual media folders repeat
+some of those definitions in standalone `timeline.wesproj` files. Counting every
+document independently inflates clips, effects, and titles.
+
 See [project-info.md](project-info.md), [timeline.md](timeline.md),
-[titles.md](titles.md), and [compound-title-cards.md](compound-title-cards.md)
-for current field maps.
+[media-library.md](media-library.md), [titles.md](titles.md),
+[effects-transitions-userdata.md](effects-transitions-userdata.md),
+[observations-15.6.4.md](observations-15.6.4.md), and
+[compound-title-cards.md](compound-title-cards.md) for current field maps.

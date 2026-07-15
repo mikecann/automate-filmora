@@ -22,12 +22,21 @@ No dependencies are required beyond Python 3.9 or newer.
 ```bash
 python3 -m filmora_wfp validate "/path/to/project.wfp"
 python3 -m filmora_wfp inspect "/path/to/project.wfp"
+python3 -m filmora_wfp map "/path/to/project.wfp"
+python3 -m filmora_wfp eval-format "/path/to/project.wfp"
 python3 -m filmora_wfp titles "/path/to/project.wfp"
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
 ```
 
-Add `--json` to `inspect`, `titles`, `validate`, or `diff` for machine-readable
-output. Paths are reduced to basenames unless `--reveal-paths` is supplied.
+`map` is the broad reverse-engineering command. It inventories normalized JSON
+paths, duplicate keys, the canonical timeline graph, clip signatures, identifier
+references, effects, transitions, title schemas, media metadata, and opaque
+`userData` payload shapes without modifying the project. `eval-format` turns the
+important invariants into repeatable pass/fail probes for future Filmora builds.
+
+Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, or `diff`
+for machine-readable output. Paths are reduced to basenames unless
+`--reveal-paths` is supplied.
 
 `unpack` safely extracts a project to a new directory without touching the source:
 
@@ -78,6 +87,10 @@ The tools can currently:
 
 - locate the main timeline through `timeline_mediaId`;
 - inventory ZIP members, resources, timelines, tracks, clips, effects, and transitions;
+- build a duplicate-key-preserving field and enum map across every JSON document;
+- distinguish canonical timelines from exact standalone timeline cache copies;
+- classify identifier relationships and opaque base64 payloads without guessing semantics;
+- run content-independent compatibility probes against real projects;
 - decode title text and typography stored as JSON inside `scriptBuf`;
 - locate nested timeline placements used for compound clips;
 - compare two controlled project saves, including embedded JSON changes;
