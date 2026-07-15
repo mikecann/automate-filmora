@@ -2,12 +2,14 @@
 
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
+from .audit import audit_title_card_copy
 from .diffing import diff_projects
 from .title_cards import clone_title_cards, load_title_card_spec
 
 __all__ = [
     "WfpArchive",
     "WfpError",
+    "audit_title_card_copy",
     "diff_projects",
     "clone_title_cards",
     "inspect_project",

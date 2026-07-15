@@ -72,9 +72,11 @@ Only proceed after the field has a repeatable before/after mapping.
 2. Copy the input and change the minimum JSON fields.
 3. Preserve unrelated members and avoid regenerating UUIDs.
 4. Validate JSON, archive paths, and timeline references.
-5. Compare input/output with `filmora_wfp diff`.
-6. Open the output in the originating Filmora build as the final gate.
-7. Save it again in Filmora and confirm the intended change survives.
+5. Audit the generated copy against its source with
+   `filmora_wfp audit-title-card-copy`.
+6. Compare input/output with `filmora_wfp diff`.
+7. Open the output in the originating Filmora build as the final gate.
+8. Save it again in Filmora and confirm the intended change survives.
 
 Do not improvise archive rewrites with one-off shell substitutions.
 
@@ -86,6 +88,8 @@ python3 -m filmora_wfp clone-title-cards input.wfp output.wfp \
   --template-timeline <outer-timeline-id> \
   --spec cards.json \
   --expect-sha256 <source-sha256>
+
+python3 -m filmora_wfp audit-title-card-copy input.wfp output.wfp --check-media
 ```
 
 Read [references/format-map.md](references/format-map.md) and

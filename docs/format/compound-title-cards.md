@@ -1,8 +1,8 @@
 # Compound title-card observations
 
-Status: repeated observation from Filmora 15.6.4.11894 on macOS. The generated
-copy described below passes structural validation, but its Filmora open/save
-round-trip is still pending.
+Status: repeated observation from Filmora 15.6.4.11894 on macOS. A generated
+one-card copy opens in Filmora and produces a rendered title thumbnail. Its
+post-save round-trip is still pending.
 
 ## Repeated UI result
 
@@ -87,8 +87,24 @@ output project. It preserves every unrelated original archive member byte-for-by
 updates the main and standalone timeline graphs together, preserves duplicate JSON
 keys, refuses an existing output, and can require the exact source SHA-256.
 
+The writer preserves `project_date_modify` and `project_source`. A controlled
+experiment showed that changing the timestamp alone makes Filmora reject the
+project as incompatible. The command now runs `audit-title-card-copy` before it
+returns, which catches that regression and removes an invalid generated output.
+
 The final compatibility gate is to open the generated copy in Filmora 15.6.4,
 inspect all new cards, save it again, and diff that save against the generated file.
+
+## Application-load result
+
+On macOS with Filmora 15.6.4.11894:
+
+- a byte-identical project copy loaded;
+- no-op reserialization of project metadata, the main timeline, and the media
+  index loaded independently and together;
+- a generated one-card copy that changed `project_date_modify` was rejected;
+- the same generated graph with the source timestamp preserved loaded;
+- Filmora generated a `LOAD TEST` title-card thumbnail from the cloned graph.
 
 ## Save-time normalization
 

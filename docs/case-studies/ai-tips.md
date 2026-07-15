@@ -41,14 +41,21 @@ at size 32 with character spacing 5. Both use title animation ID `274`.
 ## Copy experiment
 
 The copy-only writer cloned timeline `15` nine times to add tips 6 through 14.
-The generated project contains 44 timelines, 17 timeline documents, 15 paired
+That generated project contains 44 timelines, 17 timeline documents, 15 paired
 nested placements, and 28 decoded non-empty title layers. ZIP validation, media
 resolution, timeline-reference validation, and identifier/routing audits pass.
 Only the three expected original members changed, and 18 standalone card members
 were added. All other source members remained byte-identical.
 
-The source SHA-256 remained unchanged throughout the write. The generated copy's
-Filmora open/save round-trip is still pending.
+The first generated copy was rejected by Filmora even though every structural
+check passed. Controlled load tests isolated the cause: the writer changed
+`project_date_modify` without changing the opaque `project_source` integrity
+value. A one-second timestamp-only change reproduced the same rejection.
+
+After preserving both fields, a generated one-card copy loaded in Filmora
+15.6.4.11894 and Filmora rendered its changed `LOAD TEST` title in the media
+thumbnail. The fixed nine-card copy passes the source-aware audit. Its application
+open/save round-trip remains pending.
 
 A Filmora save occurred during the experiment. It compacted the previously sparse
 nested IDs into the contiguous range `10` through `25`, set `serialNumber` to
@@ -63,4 +70,4 @@ same amount.
 - Meaning of timeline `type` values `0` and `1`.
 - Exact distinction between nested clip types `6`, `7`, and `16`.
 - Whether Filmora recalculates any title metrics or archive metadata on first save.
-- Whether the generated cards render identically before and after that save.
+- Whether all nine generated cards render identically before and after that save.

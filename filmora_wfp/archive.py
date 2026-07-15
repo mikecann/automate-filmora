@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 
 PROJECT_INFO_MEMBER = "ProjectFolder/project_info.json"
+MEDIAS_INFO_MEMBER = "ProjectFolder/Medias/medias_info.json"
 TIMELINE_SUFFIX = "/timeline.wesproj"
 Pathish = Union[os.PathLike[str], str]
 

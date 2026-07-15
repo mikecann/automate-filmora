@@ -4,6 +4,9 @@
 
 - `.wfp` is an observed ZIP container.
 - Read `ProjectFolder/project_info.json` first.
+- Preserve `project_date_modify` and `project_source` in generated copies. A
+  one-second `project_date_modify` change with an unchanged `project_source`
+  makes Filmora 15.6.4 reject an otherwise valid project.
 - Resolve `timeline_mediaId` to
   `ProjectFolder/Medias/<id>/timeline.wesproj`.
 - Treat 10,000,000 timeline ticks as one second for observed Filmora 15.6.4

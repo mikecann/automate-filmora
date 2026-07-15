@@ -273,6 +273,7 @@ def write_cloneable_title_project(path: Path) -> Path:
     project_info = {
         "project_file_name": "Fixture",
         "project_date_modify": 1,
+        "project_source": "fixture-integrity-token",
         "project_editor_create_version": "15.6.4.11894",
         "project_editor_modify_version": "15.6.4.11894",
         "project_os_name": "MacOS",

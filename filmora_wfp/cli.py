@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
+from .audit import audit_title_card_copy
 from .diffing import diff_projects
 from .title_cards import clone_title_cards, load_title_card_spec
 
@@ -118,6 +119,23 @@ def _print_validation(result: Dict[str, Any]) -> None:
         )
 
 
+def _print_copy_audit(result: Dict[str, Any]) -> None:
+    print("VALID TITLE-CARD COPY" if result.get("valid") else "INVALID TITLE-CARD COPY")
+    for error in result.get("errors") or []:
+        print("ERROR: {0}".format(error))
+    for warning in result.get("warnings") or []:
+        print("WARNING: {0}".format(warning))
+    details = result.get("details") or {}
+    if details:
+        print(
+            "new_cards={0} changed_members={1} added_members={2}".format(
+                details.get("new_card_count"),
+                len(details.get("changed_members") or []),
+                len(details.get("added_members") or []),
+            )
+        )
+
+
 def _print_diff(result: Dict[str, Any]) -> None:
     print("Changed members: {0}".format(len(result.get("changed_members") or [])))
     for member in result.get("changed_members") or []:
@@ -189,6 +207,15 @@ def build_parser() -> argparse.ArgumentParser:
     clone_parser.add_argument("--expect-sha256", help="Refuse if the source fingerprint has changed")
     clone_parser.add_argument("--json", action="store_true")
 
+    audit_parser = subparsers.add_parser(
+        "audit-title-card-copy",
+        help="Check a generated title-card copy against its source project",
+    )
+    audit_parser.add_argument("source")
+    audit_parser.add_argument("output")
+    audit_parser.add_argument("--check-media", action="store_true")
+    audit_parser.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -236,6 +263,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(result["output"])
                 print("Created title cards: {0}".format(len(result["created_cards"])))
             return 0
+        if args.command == "audit-title-card-copy":
+            result = audit_title_card_copy(args.source, args.output, check_media=args.check_media)
+            _dump_json(result) if args.json else _print_copy_audit(result)
+            return 0 if result.get("valid") else 1
     except WfpError as exc:
         print("error: {0}".format(exc), file=sys.stderr)
         return 2

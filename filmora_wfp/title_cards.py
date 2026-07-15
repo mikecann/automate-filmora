@@ -18,10 +18,10 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
-from .archive import PROJECT_INFO_MEMBER, TIMELINE_SUFFIX, WfpError
+from .archive import MEDIAS_INFO_MEMBER, PROJECT_INFO_MEMBER, TIMELINE_SUFFIX, WfpError
+from .audit import audit_title_card_copy
 
 
-MEDIAS_INFO_MEMBER = "ProjectFolder/Medias/medias_info.json"
 _PAIR_UUID_RE = re.compile(r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{2}-){15}[0-9A-Fa-f]{2}(?![0-9A-Fa-f])")
 _CANONICAL_UUID_RE = re.compile(
     r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
@@ -557,7 +557,6 @@ def clone_title_cards(
 
             main["serialNumber"] = next_timeline_id
             project_info["project_file_name"] = output_path.stem
-            project_info["project_date_modify"] = int(time.time())
             project_info["proj_zip_save_path"] = str(output_path)
 
             replacements[main_member] = _compact_json(main).encode("utf-8")
@@ -595,10 +594,23 @@ def clone_title_cards(
     except zipfile.BadZipFile as exc:
         raise WfpError("Not a readable WFP ZIP: {0}".format(source_path)) from exc
 
+    copy_audit = audit_title_card_copy(source_path, output_path)
+    if _sha256(source_path) != starting_hash:
+        output_path.unlink(missing_ok=True)
+        raise WfpError("Source project changed before the generated-copy audit completed")
+    if not copy_audit.get("valid"):
+        output_path.unlink(missing_ok=True)
+        raise WfpError(
+            "Generated title-card copy failed its source-aware audit: {0}".format(
+                "; ".join(copy_audit.get("errors") or ["unknown error"])
+            )
+        )
+
     return {
         "source": str(source_path),
         "output": str(output_path),
         "source_sha256": starting_hash,
         "template_timeline_id": template_timeline_id,
         "created_cards": created_cards,
+        "copy_audit": copy_audit,
     }

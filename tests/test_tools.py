@@ -5,10 +5,12 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from filmora_wfp import (
     WfpArchive,
     WfpError,
+    audit_title_card_copy,
     clone_title_cards,
     diff_projects,
     inspect_project,
@@ -117,12 +119,63 @@ class FilmoraProjectToolsTest(unittest.TestCase):
 
             with zipfile.ZipFile(output) as archive:
                 project_info = archive.read("ProjectFolder/project_info.json")
-            self.assertEqual(json.loads(project_info)["proj_zip_save_path"], str(output.resolve()))
+            decoded_project_info = json.loads(project_info)
+            self.assertEqual(decoded_project_info["project_file_name"], "completed")
+            self.assertEqual(decoded_project_info["proj_zip_save_path"], str(output.resolve()))
+            self.assertEqual(decoded_project_info["project_date_modify"], 1)
+            self.assertEqual(decoded_project_info["project_source"], "fixture-integrity-token")
+
+            audit = audit_title_card_copy(source, output)
+            self.assertTrue(audit["valid"], audit)
+            self.assertEqual(audit["details"]["new_card_count"], 1)
 
             output_before = output.read_bytes()
             with self.assertRaises(WfpError):
                 clone_title_cards(source, output, template_timeline_id=10, cards=cards)
             self.assertEqual(output.read_bytes(), output_before)
+
+            broken = root / "broken-date.wfp"
+            with zipfile.ZipFile(output, "r") as source_archive, zipfile.ZipFile(broken, "w") as destination:
+                for info in source_archive.infolist():
+                    data = source_archive.read(info)
+                    if info.filename == "ProjectFolder/project_info.json":
+                        project_info = json.loads(data)
+                        project_info["project_date_modify"] += 1
+                        data = json.dumps(project_info, indent=4).encode("utf-8")
+                    destination.writestr(info, data)
+
+            broken_audit = audit_title_card_copy(source, broken)
+            self.assertFalse(broken_audit["valid"], broken_audit)
+            self.assertTrue(
+                any("project_date_modify" in error for error in broken_audit["errors"]),
+                broken_audit,
+            )
+
+    def test_clone_title_cards_removes_output_when_source_aware_audit_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            output = root / "rejected.wfp"
+            cards = [
+                {
+                    "start_ticks": 50_000_000,
+                    "heading": "2. Next Tip",
+                    "subheading": "A useful subtitle",
+                    "heading_font_size": 72,
+                    "heading_scale_x": 0.7,
+                    "subheading_font_size": 32,
+                    "subheading_scale_x": 0.45,
+                }
+            ]
+
+            with patch(
+                "filmora_wfp.title_cards.audit_title_card_copy",
+                return_value={"valid": False, "errors": ["controlled audit failure"]},
+            ):
+                with self.assertRaisesRegex(WfpError, "controlled audit failure"):
+                    clone_title_cards(source, output, template_timeline_id=10, cards=cards)
+
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

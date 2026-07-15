@@ -49,7 +49,19 @@ python3 -m filmora_wfp clone-title-cards project.wfp completed.wfp \
 The specification is a JSON array. Each entry supplies `start_ticks`, `heading`,
 `subheading`, `heading_font_size`, `heading_scale_x`, `subheading_font_size`, and
 `subheading_scale_x`. The command refuses an existing output and aborts if the
-source changes while the copy is being written.
+source changes while the copy is being written. It also runs a source-aware audit
+before returning. A failed audit removes the newly generated output.
+
+Repeat the same audit explicitly with:
+
+```bash
+python3 -m filmora_wfp audit-title-card-copy project.wfp completed.wfp --check-media
+```
+
+Unlike the generic validator, this command can confirm that Filmora's protected
+project timestamp and integrity token stayed unchanged, unrelated source members
+remain byte-identical, new card media folders are complete, and every new outer
+timeline has paired visual/audio placements.
 
 ## Repository map
 
@@ -70,7 +82,8 @@ The tools can currently:
 - locate nested timeline placements used for compound clips;
 - compare two controlled project saves, including embedded JSON changes;
 - detect malformed archives, unresolved timeline references, and unsafe ZIP paths;
-- clone the observed three-timeline section-card graph into a new project copy.
+- clone the observed three-timeline section-card graph into a new project copy;
+- audit a generated copy against its exact source project.
 
 The title-card cloner is deliberately not a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
