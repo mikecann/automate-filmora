@@ -50,6 +50,12 @@ python3 -m filmora_wfp eval-format project.wfp
 - Check that readable `Text` and `TextData[0].CharData` values match.
 - A Basic Title insertion was observed as a type `7` parent placement pointing to
   a nested timeline containing the type `4` title clip.
+- Filmora's properties panel can auto-resize replacement text. Keep script
+  `ScaleX` synchronized with transform `Scale_x / 100`; do not infer the new scale
+  from character count alone.
+- Expect the first properties-panel `Apply Changes` on an older title graph to
+  normalize IDs and keyed-array ordering. Repeat from that normalized save before
+  attributing every raw diff to the text edit.
 
 ## Effects and transitions
 

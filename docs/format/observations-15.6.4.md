@@ -92,15 +92,17 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | 02 | insert imported media | root resource plus linked type `1` and `2` clips; project became 1280x720 |
 | 03 | split linked pair at 2.48 s | four clips; new halves began at tick 24,800,000 with new instance IDs |
 | 04 | add Basic Title at playhead | type `7` parent placement, new nested timeline, type `4` title clip |
+| 05-06 | edit Basic Title text through properties panel | updated both text mirrors, byte size, script scale, and transform scale |
+| 06-07 | repeat with same-byte-length text | only `Text` and `TextData[0].CharData` changed |
 
 The basic title defaulted to five seconds and extended the project to 7.48
 seconds. Its title document was 3,467 UTF-8 bytes with `scriptBufSize` 3,468. The
 title transform duplicated script values: effect `Position_y` matched `PosY`,
 and effect scale percentages matched `ScaleX` and `ScaleY` multiplied by 100.
 
-The title-text and transition UI passes were not completed because the machine
-locked. Their semantics remain open even though the large sample provides a broad
-structural inventory.
+The first title-properties application performed a broad normalization pass, but
+the repeated same-length edit isolated the two mirrored text fields cleanly. A
+transition add/remove pass remains open.
 
 ## Filmora-native round trip
 

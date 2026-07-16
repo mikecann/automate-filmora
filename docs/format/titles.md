@@ -53,10 +53,34 @@ The default five-second title inserted at 2.48 seconds extended the project to
 matched `PosY`, while effect `Scale_x` and `Scale_y` were script `ScaleX` and
 `ScaleY` multiplied by 100.
 
-The text-edit pass did not produce a clean saved after-file, so the exact minimal
-set of title-text mutations is still unconfirmed. The existing compound-card
-cloner updates both text representations because its output passed a Filmora load
-and native-save round trip, but that is evidence for that narrow template only.
+## Controlled title-text edits
+
+A later controlled pass used the Basic Title properties panel and its explicit
+`Apply Changes` action. Changing `Text Here` to `FORMAT MAP TITLE` changed:
+
+- `scriptBuf.Text`;
+- `scriptBuf.TextData[0].CharData`;
+- `scriptBufSize`, from 3468 to 3481;
+- `scriptBuf.ScaleX`, from `0.1237293556` to `0.2724495530`;
+- the transform effect's `Scale_x`, from `12.37293625` to `27.24495506`.
+
+The scale relationship remained exact within float32 precision:
+
+```text
+transform Scale_x = scriptBuf ScaleX * 100
+```
+
+The first properties-panel application also normalized the document heavily,
+including effect instance IDs and ordering of several keyed arrays. That noise was
+not caused solely by the new text. A second Save As, changing the normalized title
+from `FORMAT MAP TITLE` to the same-byte-length `FORMAT MAP TITLX`, changed exactly
+two semantic paths: `Text` and `TextData[0].CharData`. `scriptBufSize`, both scale
+values, and every other field stayed unchanged.
+
+This confirms the two mirrored text fields and byte-size invariant. It does not
+yet prove a safe generic auto-sizing algorithm for arbitrary replacement text.
+The existing compound-card cloner remains the only title writer because its
+callers supply explicit scale and font metrics.
 
 ## Observed sizing relationships
 

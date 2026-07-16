@@ -50,12 +50,16 @@ results.
 
 Still open:
 
-- clean Basic Title text-only before/after save;
 - one transition added and removed;
 - one effect parameter changed by a known amount;
 - track reorder, mute, lock, and visibility toggles;
 - compound creation and unpacking;
 - repeated experiment on the next Filmora build.
+
+The Basic Title text experiment is complete for mirrored text serialization and
+byte-size handling. Arbitrary text auto-sizing remains open because Filmora also
+updates `ScaleX` and the transform effect's `Scale_x` when the replacement width
+changes.
 
 ## Writer acceptance gate
 

@@ -209,6 +209,21 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertIn("2. Next Tip", [title["text"] for title in titles])
             with WfpArchive(output) as archive:
                 main = archive.main_timeline()
+                created_title_clips = [
+                    clip
+                    for timeline in main["timelineInfos"]
+                    for track in timeline["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip.get("type") == 4
+                    and json.loads(clip["scriptBuf"]).get("Text") == "2. Next Tip"
+                ]
+                self.assertEqual(len(created_title_clips), 1)
+                created_script = json.loads(created_title_clips[0]["scriptBuf"])
+                self.assertEqual(created_script["TextData"][0]["CharData"], "2. Next Tip")
+                self.assertEqual(
+                    created_title_clips[0]["scriptBufSize"],
+                    len(created_title_clips[0]["scriptBuf"].encode("utf-8")) + 1,
+                )
                 current = next(
                     timeline
                     for timeline in main["timelineInfos"]
