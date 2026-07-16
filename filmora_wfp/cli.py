@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
 from .audit import audit_title_card_copy
+from .corpus import survey_projects
 from .diffing import diff_projects
 from .evals import evaluate_project
 from .mapping import map_project
@@ -183,6 +185,12 @@ def _print_map(result: Dict[str, Any]) -> None:
             sum(transition.get("count", 0) for transition in result.get("transitions") or []),
         )
     )
+    print(
+        "Serialized payloads: {0} parsed groups, {1} unparsed candidate groups".format(
+            len(result.get("serialized_payloads") or []),
+            len(result.get("serialized_payload_errors") or []),
+        )
+    )
     print("Clip types:")
     for clip_type in timeline.get("clip_types") or []:
         print("  type={0} count={1}".format(clip_type.get("type"), clip_type.get("count")))
@@ -221,6 +229,46 @@ def _print_evaluation(result: Dict[str, Any]) -> None:
     duplicate_keys = observations.get("duplicate_json_keys") or []
     if duplicate_keys:
         print("OBSERVED duplicate JSON key patterns: {0}".format(len(duplicate_keys)))
+
+
+def _print_survey(result: Dict[str, Any]) -> None:
+    inventory = result.get("inventory") or {}
+    print(
+        "Corpus: {0} files, {1} unique, {2} mapped, {3} failed".format(
+            inventory.get("discovered_files", 0),
+            inventory.get("unique_file_hashes", 0),
+            inventory.get("mapped_projects", 0),
+            inventory.get("failed_projects", 0),
+        )
+    )
+    print("Versions:")
+    for version in result.get("versions") or []:
+        print(
+            "  {0}: {1} projects, {2} copies, {3}".format(
+                version.get("modified_version"),
+                version.get("projects"),
+                version.get("copies"),
+                version.get("relevance"),
+            )
+        )
+    features = result.get("features") or {}
+    feature_summary = (
+        len(features.get("clip_types") or []),
+        len(features.get("effects") or []),
+        len(features.get("transitions") or []),
+        len(features.get("title_fields") or []),
+        len(features.get("serialized_payloads") or []),
+    )
+    summary = (
+        "Features: {0} clip types, {1} effects, {2} transitions, "
+        "{3} title fields, {4} serialized payloads"
+    )
+    print(summary.format(*feature_summary))
+    failures = result.get("eval_probe_failures") or []
+    if failures:
+        print("Compatibility probe failures:")
+        for failure in failures:
+            print("  {0}: {1} projects".format(failure.get("probe"), failure.get("projects")))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -268,6 +316,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     eval_parser.add_argument("project")
     eval_parser.add_argument("--json", action="store_true")
+
+    survey_parser = subparsers.add_parser(
+        "survey",
+        help="Recursively map and de-duplicate a read-only corpus of WFP projects",
+    )
+    survey_parser.add_argument("inputs", nargs="+")
+    survey_parser.add_argument("--reference-version")
+    survey_parser.add_argument("--reveal-paths", action="store_true")
+    survey_parser.add_argument("--json", action="store_true")
+    survey_parser.add_argument("--output", help="Write the JSON survey to a new file")
 
     clone_parser = subparsers.add_parser(
         "clone-title-cards",
@@ -334,6 +392,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             result = evaluate_project(args.project)
             _dump_json(result) if args.json else _print_evaluation(result)
             return 0 if result.get("valid") else 1
+        if args.command == "survey":
+            result = survey_projects(
+                args.inputs,
+                reference_version=args.reference_version,
+                reveal_paths=args.reveal_paths,
+            )
+            if args.output:
+                output = Path(args.output).expanduser().resolve()
+                if output.exists():
+                    raise WfpError("Refusing to overwrite survey output: {0}".format(output))
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(
+                    json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+                    encoding="utf-8",
+                )
+                print(output)
+            else:
+                _dump_json(result) if args.json else _print_survey(result)
+            return 0 if not (result.get("failures") or []) else 1
         if args.command == "clone-title-cards":
             result = clone_title_cards(
                 args.project,

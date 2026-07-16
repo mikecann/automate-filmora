@@ -75,6 +75,24 @@ and audio tracks. These are strong structural observations, not stable enum name
 Do not encode these labels into a writer until controlled experiments confirm the
 semantics across new projects and Filmora versions.
 
+### Corpus-only clip shapes
+
+A read-only survey of 204 Filmora 14/15 projects added four types absent from AI
+Tips:
+
+- `8`: effect/adjustment asset shape. Some instances have `adjustLayer: true`,
+  while others are stock overlays without that field.
+- `14`: legacy visual screen-recording shape with keyboard and mouse display
+  fields. Seen only in Filmora 14.0/14.3.
+- `15`: linked legacy screen-recording audio shape with mouse audio controls.
+  Seen only in Filmora 14.0/14.3.
+- `26`: `serviceType: "pen"` path-graphic shape with a dedicated graphic effect
+  chain. Seen only twice in Filmora 15.5 variants of the same subject.
+
+These labels describe observed shapes, not stable enum definitions. See
+[`../case-studies/external-backup-corpus.md`](../case-studies/external-backup-corpus.md)
+for counts and limitations.
+
 ## Nested timelines
 
 A compound placement has a `timelineId` instead of a usable `filename`. Resolve it
@@ -113,6 +131,11 @@ Useful fields include `id`, `display`, `paramList`, and `userData`.
 
 Transitions are embedded on clips as `preTransition` and `postTransition`, with
 their own IDs, display names, time ranges, and user data.
+
+Several apparent scalar fields are serialized documents. `pipBuf`,
+`speed.speedParam`, audio parameter/keyframe fields, effect parameter keyframes,
+smart-mask settings, colour curves, and title animation XML are profiled in
+[`serialized-payloads.md`](serialized-payloads.md).
 
 ## Controlled media and split observations
 

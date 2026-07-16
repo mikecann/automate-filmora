@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from .analysis import validate_project
 from .archive import WfpArchive
@@ -17,11 +17,15 @@ def _probe(name: str, passed: bool, detail: str, required: bool = True) -> Dict[
     return {"name": name, "passed": passed, "required": required, "detail": detail}
 
 
-def evaluate_project(path: Pathish) -> Dict[str, Any]:
+def evaluate_project(
+    path: Pathish,
+    mapped: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     """Run content-independent format probes against a real WFP project."""
 
     validation = validate_project(path)
-    mapped = map_project(path)
+    if mapped is None:
+        mapped = map_project(path)
     probes: List[Dict[str, Any]] = []
 
     with WfpArchive(path) as archive:
@@ -193,6 +197,21 @@ def evaluate_project(path: Pathish) -> Dict[str, Any]:
             "{0}/{1} script Text values equal TextData[0].CharData".format(
                 matching_text_mirrors, text_mirrors
             ),
+        )
+    )
+
+    serialized_errors = mapped.get("serialized_payload_errors") or []
+    serialized_error_count = sum(int(row.get("count") or 0) for row in serialized_errors)
+    probes.append(
+        _probe(
+            "serialized_payload_candidates_parse",
+            serialized_error_count == 0,
+            "{0} candidate JSON/XML string(s) failed to parse across {1} field group(s)".format(
+                serialized_error_count, len(serialized_errors)
+            )
+            if serialized_errors
+            else "all candidate JSON/XML strings parsed",
+            required=False,
         )
     )
 

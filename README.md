@@ -4,8 +4,11 @@ Experimental, evidence-driven tooling for inspecting and narrowly automating
 Wondershare Filmora project files.
 
 Filmora 15 `.wfp` projects are ZIP archives containing JSON project metadata,
-timeline documents, thumbnails, and references to external media. This repository
-documents the observed format and provides copy-only tools for exploring it.
+timeline documents, thumbnails, and references to external media. A `.wfpbundle`
+is an outer ZIP carrying one embedded `.wfp` plus copied source media; the tools
+inspect that embedded project without extracting or reading the bundled footage.
+This repository documents the observed format and provides copy-only tools for
+exploring it.
 
 ## Safety contract
 
@@ -24,6 +27,7 @@ python3 -m filmora_wfp validate "/path/to/project.wfp"
 python3 -m filmora_wfp inspect "/path/to/project.wfp"
 python3 -m filmora_wfp map "/path/to/project.wfp"
 python3 -m filmora_wfp eval-format "/path/to/project.wfp"
+python3 -m filmora_wfp survey "/path/to/project-folder" --reference-version 15.6.4.11894
 python3 -m filmora_wfp titles "/path/to/project.wfp"
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
 ```
@@ -31,8 +35,17 @@ python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
 `map` is the broad reverse-engineering command. It inventories normalized JSON
 paths, duplicate keys, the canonical timeline graph, clip signatures, identifier
 references, effects, transitions, title schemas, media metadata, and opaque
-`userData` payload shapes without modifying the project. `eval-format` turns the
+`userData` payload shapes without modifying the project. It also profiles schemas
+inside parseable JSON strings and tag/attribute names inside XML strings without
+retaining their values. `eval-format` turns the
 important invariants into repeatable pass/fail probes for future Filmora builds.
+`survey` recursively discovers and SHA-256 de-duplicates a read-only project
+corpus, then aggregates redacted versions, schema fields, clip types, effects,
+transitions, title shapes, and eval failures. For `.wfpbundle`, the fingerprint is
+of the embedded project rather than its potentially huge media payload. Pass
+`--json` for the full evidence map, or `--output work/corpus.json` to save it
+without shell redirection. Source paths are omitted unless `--reveal-paths` is
+explicitly supplied, and an existing output file is never overwritten.
 
 Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, or `diff`
 for machine-readable output. Paths are reduced to basenames unless
@@ -90,7 +103,9 @@ The tools can currently:
 - build a duplicate-key-preserving field and enum map across every JSON document;
 - distinguish canonical timelines from exact standalone timeline cache copies;
 - classify identifier relationships and opaque base64 payloads without guessing semantics;
+- profile JSON/XML strings and NUL-terminated JSON without retaining payload values;
 - run content-independent compatibility probes against real projects;
+- survey and de-duplicate a directory corpus without retaining project paths;
 - decode title text and typography stored as JSON inside `scriptBuf`;
 - locate nested timeline placements used for compound clips;
 - compare two controlled project saves, including embedded JSON changes;

@@ -25,6 +25,12 @@ The studied production project also contained colour, curve, wheel, sharpen,
 object-tracking, equalizer, and title-animation effects. The mapper reports every
 observed ID/display pair, count, parameter name, value type, and numeric range.
 
+A 204-project Filmora 14/15 corpus expanded this to 78 ID/display pairs. Effects
+not present in AI Tips included audio enhancer, speech enhance, human/hair
+segmentation, inner shadow, pixelate, masks, stock overlays, and a path-graphic
+chain. Treat display names as evidence only; effect IDs and availability remain
+build-specific.
+
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 
@@ -58,6 +64,11 @@ postTransition
 Each can contain an ID, display name, range information, parameters, and
 `userData`. The studied project had 61 canonical transition placements across
 cuts, pushes, diagonal transitions, fades, and audio fades.
+
+The wider corpus contained 52 position/ID/display combinations. Because pre and
+post placements are counted separately, that is not 52 unique UI transition
+names. It confirms the generic owner-side model across Filmora 14 and 15 but does
+not make any individual asset ID portable.
 
 Placement matters. A transition with the same display name can appear as a pre or
 post transition, so automation must preserve both its body and its owning side.

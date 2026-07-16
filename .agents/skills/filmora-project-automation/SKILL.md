@@ -38,11 +38,43 @@ default; use `--reveal-paths` only when resolving local media is required.
 Use `inspect` for a quick human summary. Use `map --json` before any new format
 claim or mutation: it preserves duplicate JSON keys, builds the canonical
 timeline graph, profiles normalized fields and enums, checks identifiers, and
-classifies opaque payloads without assigning semantics. Use `eval-format` as the
-repeatable compatibility gate for a real project or a future Filmora build.
+classifies opaque payloads without assigning semantics. It also profiles schemas
+inside parseable JSON/XML strings without retaining their values. Use
+`eval-format` as the repeatable compatibility gate for a real project or a future
+Filmora build.
 
 Read [references/format-map.md](references/format-map.md) when tracing timeline,
 clip, title, effect, or transition fields.
+
+## Survey a project corpus
+
+Use the read-only corpus command when the user supplies a directory or backup:
+
+```bash
+python3 -m filmora_wfp survey "/path/to/projects" \
+  --reference-version 15.6.4.11894 \
+  --output work/corpus.json
+```
+
+The survey recursively discovers projects, fingerprints unique edit archives,
+maps each project, runs format evals, and aggregates versions, fields, clip types,
+effects, transitions, and serialized payloads. A `.wfpbundle` is fingerprinted
+and mapped through its embedded WFP, so bundled media is never hashed or read.
+
+Keep paths hidden for reusable evidence. Use `--reveal-paths` only for an ignored
+private report needed to select local samples, and never commit that report.
+
+Always set `--reference-version` to the exact build under investigation. Treat
+cohorts as follows:
+
+- `exact`: direct compatibility evidence;
+- `same_major`: useful discovery evidence, still sensitive to patch and OS;
+- `legacy`: historical structure and hypotheses only;
+- `future`: possible format drift that needs a new controlled baseline.
+
+Corpus frequency can reveal missing structures and choose representative
+projects. It cannot prove an enum or field meaning. Require a minimal Filmora UI
+before/after experiment before adding writer behavior.
 
 ## Reverse-engineer a field
 

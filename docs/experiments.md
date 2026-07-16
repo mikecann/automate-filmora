@@ -58,6 +58,19 @@ Still open:
 - compound creation and unpacking;
 - repeated experiment on the next Filmora build.
 
+### 2026-07-16 external corpus survey
+
+The read-only `survey` command mapped 204 unique projects from the external
+backup's video tree. It separated 56 Filmora 15 projects from 148 legacy Filmora
+14 projects, handled 38 media-heavy bundles through their embedded WFP, and found
+no archive parser failures. The closest cohort was three Windows
+`15.6.10.20319` projects, not an exact match for the macOS `15.6.4.11894`
+fixture.
+
+Corpus evidence is useful for finding new shapes and choosing controlled tests.
+It does not confirm enum semantics. See
+[`case-studies/external-backup-corpus.md`](case-studies/external-backup-corpus.md).
+
 The Basic Title text experiment is complete for mirrored text serialization and
 byte-size handling. Arbitrary text auto-sizing remains open because Filmora also
 updates `ScaleX` and the transform effect's `Scale_x` when the replacement width

@@ -14,6 +14,7 @@ import math
 import os
 import re
 import zipfile
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 from pathlib import Path, PurePosixPath
 from typing import Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, Union
@@ -63,6 +64,10 @@ def _normalize_key(key: str) -> str:
         return "{media_id}"
     if UUID_RE.match(key) or HEX_ID_RE.match(key):
         return "{id}"
+    if len(key) > 2 and key.startswith("{") and key.endswith("}"):
+        inner = key[1:-1]
+        if UUID_RE.match(inner) or HEX_ID_RE.match(inner):
+            return "{id}"
     return key
 
 
@@ -753,6 +758,134 @@ def _title_map(canonical: Sequence[Tuple[str, Dict[str, Any]]]) -> Dict[str, Any
     }
 
 
+def _serialized_payload_map(
+    canonical: Sequence[Tuple[str, Dict[str, Any]]]
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Profile parseable JSON/XML strings without retaining their values."""
+
+    groups: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    errors: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+    def add_error(field: str, payload_format: str, clip_type: str) -> None:
+        row = errors.setdefault(
+            (field, payload_format),
+            {
+                "field": field,
+                "format": payload_format,
+                "count": 0,
+                "clip_types": Counter(),
+            },
+        )
+        row["count"] += 1
+        row["clip_types"][clip_type] += 1
+
+    def add_json(field: str, clip_type: str, parsed: Any, null_terminated: bool) -> None:
+        identity = (field, "json")
+        row = groups.setdefault(
+            identity,
+            {
+                "field": field,
+                "format": "json",
+                "count": 0,
+                "clip_types": Counter(),
+                "null_terminated_count": 0,
+                "profiler": SchemaProfiler(max_examples=0),
+            },
+        )
+        row["count"] += 1
+        row["clip_types"][clip_type] += 1
+        row["null_terminated_count"] += int(null_terminated)
+        row["profiler"].observe(parsed)
+
+    def add_xml(
+        field: str, clip_type: str, root: ET.Element, null_terminated: bool
+    ) -> None:
+        identity = (field, "xml")
+        row = groups.setdefault(
+            identity,
+            {
+                "field": field,
+                "format": "xml",
+                "count": 0,
+                "clip_types": Counter(),
+                "null_terminated_count": 0,
+                "tags": Counter(),
+                "attributes": Counter(),
+            },
+        )
+        row["count"] += 1
+        row["clip_types"][clip_type] += 1
+        row["null_terminated_count"] += int(null_terminated)
+        for element in root.iter():
+            row["tags"][element.tag.rsplit("}", 1)[-1]] += 1
+            row["attributes"].update(element.attrib.keys())
+
+    def walk(value: Any, field: str, clip_type: str) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                child = "{0}.{1}".format(field, key) if field else str(key)
+                walk(item, child, clip_type)
+            return
+        if isinstance(value, list):
+            for item in value:
+                walk(item, "{0}[]".format(field), clip_type)
+            return
+        if not isinstance(value, str) or not value.strip() or field == "scriptBuf":
+            return
+        candidate = value.rstrip("\x00")
+        null_terminated = len(candidate) != len(value)
+        stripped = candidate.lstrip()
+        if stripped.startswith(("{", "[")):
+            try:
+                parsed = json.loads(candidate, object_pairs_hook=_pairs_object)
+            except json.JSONDecodeError:
+                add_error(field, "json", clip_type)
+                return
+            if isinstance(parsed, (JSONObject, dict, list)):
+                add_json(field, clip_type, parsed, null_terminated)
+            return
+        if stripped.startswith("<"):
+            try:
+                root = ET.fromstring(candidate)
+            except ET.ParseError:
+                add_error(field, "xml", clip_type)
+                return
+            add_xml(field, clip_type, root, null_terminated)
+
+    for _member, timeline in canonical:
+        for _track, clip in _iter_clips(timeline):
+            clip_type = str(clip.get("type"))
+            for key, value in clip.items():
+                if key != "scriptBuf":
+                    walk(value, str(key), clip_type)
+
+    output = []
+    for (_field, payload_format), raw in sorted(groups.items()):
+        row: Dict[str, Any] = {
+            "field": raw["field"],
+            "format": payload_format,
+            "count": raw["count"],
+            "clip_types": dict(sorted(raw["clip_types"].items())),
+            "null_terminated_count": raw["null_terminated_count"],
+        }
+        if payload_format == "json":
+            row["schema"] = raw["profiler"].result()
+        else:
+            row["tags"] = dict(sorted(raw["tags"].items()))
+            row["attributes"] = dict(sorted(raw["attributes"].items()))
+        output.append(row)
+    error_rows = [
+        {
+            "field": raw["field"],
+            "format": raw["format"],
+            "count": raw["count"],
+            "clip_types": dict(sorted(raw["clip_types"].items())),
+        }
+        for raw in sorted(errors.values(), key=lambda row: (row["field"], row["format"]))
+    ]
+    return output, error_rows
+
+
 def _timeline_map(
     canonical: Sequence[Tuple[str, Dict[str, Any]]], cache_summary: Dict[str, Any], cache_rows: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
@@ -887,8 +1020,9 @@ def map_project(path: Pathish, reveal_paths: bool = False) -> Dict[str, Any]:
             compression[str(info.compress_type)] += 1
         largest = sorted(archive.members(), key=lambda info: info.file_size, reverse=True)[:10]
         effects, transitions = _effect_and_transition_map(canonical)
+        serialized_payloads, serialized_payload_errors = _serialized_payload_map(canonical)
         return {
-            "format_map_version": 1,
+            "format_map_version": 2,
             "source": {
                 "path": _display_path(str(archive.path), reveal_paths),
                 "size_bytes": archive.path.stat().st_size,
@@ -917,6 +1051,8 @@ def map_project(path: Pathish, reveal_paths: bool = False) -> Dict[str, Any]:
             "media_library": _media_library_map(archive),
             "timeline": _timeline_map(canonical, cache_summary, cache_rows),
             "titles": _title_map(canonical),
+            "serialized_payloads": serialized_payloads,
+            "serialized_payload_errors": serialized_payload_errors,
             "effects": effects,
             "transitions": transitions,
             "user_data": _user_data_map(canonical, media_ids),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
@@ -27,20 +28,59 @@ class WfpArchive:
     def __init__(self, path: Pathish) -> None:
         self.path = Path(path).expanduser().resolve()
         self._zip: Optional[zipfile.ZipFile] = None
+        self._outer_zip: Optional[zipfile.ZipFile] = None
+        self._inner_buffer: Optional[io.BytesIO] = None
 
     def __enter__(self) -> "WfpArchive":
         if not self.path.is_file():
             raise WfpError("Project does not exist: {0}".format(self.path))
         try:
-            self._zip = zipfile.ZipFile(self.path, "r")
+            opened = zipfile.ZipFile(self.path, "r")
         except (OSError, zipfile.BadZipFile) as exc:
             raise WfpError("Not a readable WFP ZIP: {0}".format(self.path)) from exc
+        if (
+            PROJECT_INFO_MEMBER in opened.namelist()
+            or self.path.suffix.lower() != ".wfpbundle"
+        ):
+            self._zip = opened
+            return self
+
+        embedded = [
+            info
+            for info in opened.infolist()
+            if not info.is_dir() and info.filename.lower().endswith(".wfp")
+        ]
+        if len(embedded) != 1:
+            opened.close()
+            raise WfpError(
+                "Archive has no direct project and {0} embedded WFP files: {1}".format(
+                    len(embedded), self.path
+                )
+            )
+        try:
+            self._inner_buffer = io.BytesIO(opened.read(embedded[0]))
+            self._zip = zipfile.ZipFile(self._inner_buffer, "r")
+        except (OSError, zipfile.BadZipFile) as exc:
+            opened.close()
+            self._inner_buffer = None
+            raise WfpError("Embedded WFP is not a readable ZIP: {0}".format(self.path)) from exc
+        if PROJECT_INFO_MEMBER not in self._zip.namelist():
+            self._zip.close()
+            opened.close()
+            self._zip = None
+            self._inner_buffer = None
+            raise WfpError("Embedded WFP is missing project_info.json: {0}".format(self.path))
+        self._outer_zip = opened
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
         if self._zip is not None:
             self._zip.close()
+        if self._outer_zip is not None:
+            self._outer_zip.close()
         self._zip = None
+        self._outer_zip = None
+        self._inner_buffer = None
 
     @property
     def zip_file(self) -> zipfile.ZipFile:

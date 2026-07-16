@@ -29,6 +29,11 @@ Observed archives can also contain `ProjectFolder/functionExtraData.json`, media
 metadata, several thumbnails, and one cover thumbnail. Compression is mixed:
 Filmora may store some members and deflate others.
 
+A `.wfpbundle` is an outer ZIP containing one embedded `.wfp` and copied media
+under a top-level `Medias/` tree. Read the embedded project archive for format
+analysis. Do not hash, extract, or inspect multi-gigabyte media merely to compare
+project decisions.
+
 ## Root project metadata
 
 `ProjectFolder/project_info.json` provides the routing information needed to find
@@ -80,5 +85,6 @@ document independently inflates clips, effects, and titles.
 See [project-info.md](project-info.md), [timeline.md](timeline.md),
 [media-library.md](media-library.md), [titles.md](titles.md),
 [effects-transitions-userdata.md](effects-transitions-userdata.md),
+[serialized-payloads.md](serialized-payloads.md),
 [observations-15.6.4.md](observations-15.6.4.md), and
 [compound-title-cards.md](compound-title-cards.md) for current field maps.

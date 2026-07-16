@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 import unittest
 import zipfile
@@ -12,11 +13,13 @@ from filmora_wfp import (
     WfpError,
     audit_title_card_copy,
     clone_title_cards,
+    discover_projects,
     diff_projects,
     evaluate_project,
     inspect_project,
     list_titles,
     map_project,
+    survey_projects,
     validate_project,
 )
 
@@ -40,6 +43,61 @@ def _rewrite_main_timeline(source: Path, destination: Path, mutate) -> Path:
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_corpus_survey_deduplicates_and_aggregates_features(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = write_project(root / "first.wfp")
+            shutil.copyfile(first, root / "duplicate.wfp")
+            write_cloneable_title_project(root / "compound.wfp")
+            (root / "ignore.txt").write_text("not a project", encoding="utf-8")
+
+            self.assertEqual(len(discover_projects([root])), 3)
+            result = survey_projects([root], reference_version="15.6.4.11894")
+
+            self.assertEqual(result["inventory"]["discovered_files"], 3)
+            self.assertEqual(result["inventory"]["wfp_files"], 3)
+            self.assertEqual(result["inventory"]["bundle_files"], 0)
+            self.assertEqual(result["inventory"]["hashed_files"], 3)
+            self.assertEqual(result["inventory"]["unique_file_hashes"], 2)
+            self.assertEqual(result["inventory"]["duplicate_files"], 1)
+            self.assertEqual(result["inventory"]["mapped_projects"], 2)
+            self.assertEqual(result["inventory"]["failed_projects"], 0)
+            self.assertFalse(any("paths" in sample for sample in result["samples"]))
+            clip_types = {row["type"]: row for row in result["features"]["clip_types"]}
+            self.assertEqual(clip_types["4"]["projects"], 2)
+            self.assertEqual(clip_types["6"]["occurrences"], 1)
+            track_types = {
+                row["track_type"]: row for row in result["features"]["track_types"]
+            }
+            self.assertIn("occurrences", track_types["1"])
+            self.assertNotIn("projects", track_types["1"])
+            version = result["versions"][0]
+            self.assertEqual(version["modified_version"], "15.6.4.11894")
+            self.assertEqual(version["relevance"], "exact")
+            self.assertEqual(version["projects"], 2)
+            self.assertEqual(version["copies"], 3)
+
+    def test_bundle_maps_embedded_project_without_reading_bundled_media(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project = write_project(root / "inside.wfp")
+            bundle = root / "package.wfpbundle"
+            with zipfile.ZipFile(bundle, "w", compression=zipfile.ZIP_STORED) as archive:
+                archive.writestr("Medias/large-video.mp4", b"x" * 1024 * 1024)
+                archive.writestr("inside.wfp", project.read_bytes())
+
+            mapped = map_project(bundle)
+            self.assertEqual(mapped["source"]["filmora_version"], "15.6.4.11894")
+
+            result = survey_projects([project, bundle], reference_version="15.6.4.11894")
+            self.assertEqual(result["inventory"]["discovered_files"], 2)
+            self.assertEqual(result["inventory"]["wfp_files"], 1)
+            self.assertEqual(result["inventory"]["bundle_files"], 1)
+            self.assertEqual(result["inventory"]["hashed_files"], 2)
+            self.assertEqual(result["inventory"]["unique_file_hashes"], 1)
+            self.assertEqual(result["inventory"]["duplicate_files"], 1)
+            self.assertEqual(result["samples"][0]["copies"], 2)
+
     def test_format_eval_checks_graph_cache_and_title_invariants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = write_cloneable_title_project(Path(temporary) / "fixture.wfp")
@@ -158,6 +216,87 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     }
                 ],
             )
+
+    def test_map_normalizes_braced_uuid_object_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = write_project(Path(temporary) / "markers.wfp")
+            opaque = "{FA6C57DC-8387-4d6e-BB02-3D1391FF78C6}"
+            with zipfile.ZipFile(project, "a", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(
+                    "ProjectFolder/Medias/MAIN/extra.json",
+                    json.dumps(
+                        {"allMarkersInfo": {opaque: [{"position": 10, "color": 2}]}},
+                        separators=(",", ":"),
+                    ),
+                )
+
+            result = map_project(project)
+            fields = [field["path"] for field in result["documents"]["timeline_extra"]["fields"]]
+
+            self.assertIn("$.allMarkersInfo.{id}[].position", fields)
+            self.assertFalse(any(opaque in field for field in fields))
+
+    def test_map_profiles_embedded_json_and_xml_without_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_payloads(timeline):
+                clip = timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][0]
+                clip["intelligenceSegmentSmartRemoveSerializeToJson"] = json.dumps(
+                    {"enable": True, "fr": {"num": 30, "den": 1}},
+                    separators=(",", ":"),
+                )
+                clip["animation"] = {
+                    "charXml": '<AnimationParam MotionID="private-value"><AnimationConfig Property="x"/></AnimationParam>'
+                }
+                clip["hdr_color"] = '{"primaryColorAdjust":{"temperature":0.0}}\x00'
+
+            project = _rewrite_main_timeline(source, root / "payloads.wfp", add_payloads)
+            result = map_project(project)
+            payloads = {
+                (row["field"], row["format"]): row for row in result["serialized_payloads"]
+            }
+
+            embedded = payloads[("intelligenceSegmentSmartRemoveSerializeToJson", "json")]
+            self.assertEqual(embedded["count"], 1)
+            fields = [field["path"] for field in embedded["schema"]["fields"]]
+            self.assertIn("$.fr.num", fields)
+            self.assertFalse(any("examples" in field for field in embedded["schema"]["fields"]))
+            xml = payloads[("animation.charXml", "xml")]
+            self.assertEqual(xml["tags"], {"AnimationConfig": 1, "AnimationParam": 1})
+            self.assertEqual(xml["attributes"], {"MotionID": 1, "Property": 1})
+            self.assertNotIn("private-value", json.dumps(result["serialized_payloads"]))
+            null_json = payloads[("hdr_color", "json")]
+            self.assertEqual(null_json["count"], 1)
+            self.assertEqual(null_json["null_terminated_count"], 1)
+
+            def break_payload(timeline):
+                clip = timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][0]
+                clip["badPayload"] = "{broken"
+
+            broken = _rewrite_main_timeline(project, root / "broken.wfp", break_payload)
+            broken_map = map_project(broken)
+            self.assertEqual(
+                broken_map["serialized_payload_errors"],
+                [
+                    {
+                        "field": "badPayload",
+                        "format": "json",
+                        "count": 1,
+                        "clip_types": {"16": 1},
+                    }
+                ],
+            )
+            evaluation = evaluate_project(broken)
+            probe = next(
+                item
+                for item in evaluation["probes"]
+                if item["name"] == "serialized_payload_candidates_parse"
+            )
+            self.assertFalse(probe["passed"])
+            self.assertFalse(probe["required"])
+            self.assertTrue(evaluation["valid"])
 
     def test_map_profiles_rotation_and_linked_transition_duration(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

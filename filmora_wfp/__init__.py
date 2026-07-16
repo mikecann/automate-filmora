@@ -3,6 +3,7 @@
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
 from .audit import audit_title_card_copy
+from .corpus import discover_projects, survey_projects
 from .diffing import diff_projects
 from .evals import evaluate_project
 from .mapping import map_project
@@ -15,10 +16,12 @@ __all__ = [
     "diff_projects",
     "evaluate_project",
     "clone_title_cards",
+    "discover_projects",
     "inspect_project",
     "list_titles",
     "load_title_card_spec",
     "map_project",
+    "survey_projects",
     "validate_project",
 ]
 
