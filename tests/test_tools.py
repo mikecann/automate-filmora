@@ -23,6 +23,22 @@ from filmora_wfp import (
 from tests.helpers import write_cloneable_title_project, write_project
 
 
+def _rewrite_main_timeline(source: Path, destination: Path, mutate) -> Path:
+    """Copy a fixture while applying one test-only change to the routed main timeline."""
+
+    with zipfile.ZipFile(source, "r") as before, zipfile.ZipFile(
+        destination, "w", compression=zipfile.ZIP_DEFLATED
+    ) as after:
+        for info in before.infolist():
+            data = before.read(info)
+            if info.filename == "ProjectFolder/Medias/MAIN/timeline.wesproj":
+                timeline = json.loads(data)
+                mutate(timeline)
+                data = json.dumps(timeline, separators=(",", ":")).encode("utf-8")
+            after.writestr(info, data)
+    return destination
+
+
 class FilmoraProjectToolsTest(unittest.TestCase):
     def test_format_eval_checks_graph_cache_and_title_invariants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -33,6 +49,54 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertTrue(result["valid"], result)
             self.assertTrue(all(probe["passed"] for probe in result["probes"]), result)
             self.assertEqual(result["observations"]["standalone_only_timelines"], 0)
+
+    def test_format_eval_resolves_resources_from_standalone_timeline_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = write_cloneable_title_project(Path(temporary) / "fixture.wfp")
+            standalone = {
+                "currentTimelineId": 99,
+                "resources": [
+                    {
+                        "filename": "file:///private/example/standalone.mp4",
+                        "sourceUuid": "standalone-source",
+                    }
+                ],
+                "timelineInfos": [
+                    {
+                        "timelineId": 99,
+                        "trackInfos": [
+                            {
+                                "trackType": 1,
+                                "uuid": "standalone-track",
+                                "clipList": [
+                                    {
+                                        "type": 1,
+                                        "sourceUuid": "standalone-source",
+                                        "thisUId": "standalone-clip",
+                                        "tlBegin": 0,
+                                        "tlEnd": 10_000_000,
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+            with zipfile.ZipFile(project, "a", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(
+                    "ProjectFolder/Medias/STANDALONE/timeline.wesproj",
+                    json.dumps(standalone, separators=(",", ":")),
+                )
+
+            result = evaluate_project(project)
+
+            source_probe = next(
+                probe
+                for probe in result["probes"]
+                if probe["name"] == "source_uuid_references_resolve"
+            )
+            self.assertTrue(source_probe["passed"], result)
+            self.assertEqual(result["observations"]["standalone_only_timelines"], 1)
 
     def test_map_profiles_canonical_graph_and_opaque_payloads(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -94,6 +158,129 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     }
                 ],
             )
+
+    def test_map_profiles_rotation_and_linked_transition_duration(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_effect_and_transitions(timeline):
+                current = next(
+                    item for item in timeline["timelineInfos"] if item["timelineId"] == 1
+                )
+                clips = [clip for track in current["trackInfos"] for clip in track["clipList"]]
+                visual = next(clip for clip in clips if clip["type"] == 6)
+                audio = next(clip for clip in clips if clip["type"] == 16)
+                visual["effectChainList"] = [
+                    {
+                        "name": "Basic",
+                        "effectList": [
+                            {
+                                "display": "transform",
+                                "id": "video/effect/transform",
+                                "thisUId": "effect-rotation",
+                                "paramList": [
+                                    {
+                                        "name": "EnableTransform",
+                                        "fxParam": {"paramType": 5, "unValue": 1},
+                                    },
+                                    {
+                                        "name": "Rotation",
+                                        "fxParam": {"paramType": 3, "unValue": 10.0},
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ]
+                visual["postTransition"] = {
+                    "display": "Dissolve",
+                    "id": "2981D185-D52E-44f4-ABD5-3CE83890E32E",
+                    "thisUId": "visual-transition",
+                    "tlBegin": 20_000_000,
+                    "tlEnd": 30_000_000,
+                    "type": 5,
+                }
+                audio["postTransition"] = {
+                    "display": "audio fade",
+                    "id": "audio/blender/transition-fade",
+                    "includeTrimFrames": False,
+                    "thisUId": "audio-transition",
+                    "tlBegin": 20_000_000,
+                    "tlEnd": 30_000_000,
+                    "type": 5,
+                }
+
+            project = _rewrite_main_timeline(
+                source,
+                root / "effect-transition.wfp",
+                add_effect_and_transitions,
+            )
+
+            result = map_project(project)
+
+            transform = next(
+                effect for effect in result["effects"] if effect["id"] == "video/effect/transform"
+            )
+            rotation_value = next(
+                parameter
+                for parameter in transform["parameters"]
+                if parameter["name"] == "Rotation"
+                and parameter["value_path"] == "fxParam.unValue"
+            )
+            self.assertEqual(rotation_value["numeric_range"], [10.0, 10.0])
+            transitions = {transition["display"]: transition for transition in result["transitions"]}
+            self.assertEqual(
+                transitions["Dissolve"]["duration_ticks"]["numeric_range"],
+                [10_000_000, 10_000_000],
+            )
+            self.assertEqual(
+                transitions["audio fade"]["duration_ticks"]["numeric_range"],
+                [10_000_000, 10_000_000],
+            )
+            evaluation = evaluate_project(project)
+            transition_probe = next(
+                probe for probe in evaluation["probes"] if probe["name"] == "transition_ranges_valid"
+            )
+            self.assertTrue(transition_probe["passed"], evaluation)
+
+    def test_format_eval_rejects_non_positive_transition_range(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_zero_length_transition(timeline):
+                current = next(
+                    item for item in timeline["timelineInfos"] if item["timelineId"] == 1
+                )
+                visual = next(
+                    clip
+                    for track in current["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                visual["postTransition"] = {
+                    "display": "Dissolve",
+                    "id": "2981D185-D52E-44f4-ABD5-3CE83890E32E",
+                    "thisUId": "zero-length-transition",
+                    "tlBegin": 30_000_000,
+                    "tlEnd": 30_000_000,
+                    "type": 5,
+                }
+
+            project = _rewrite_main_timeline(
+                source,
+                root / "invalid-transition.wfp",
+                add_zero_length_transition,
+            )
+
+            result = evaluate_project(project)
+
+            self.assertFalse(result["valid"], result)
+            transition_probe = next(
+                probe for probe in result["probes"] if probe["name"] == "transition_ranges_valid"
+            )
+            self.assertFalse(transition_probe["passed"])
 
     def test_format_eval_rejects_mismatched_title_text_mirror(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

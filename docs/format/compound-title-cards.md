@@ -1,8 +1,9 @@
 # Compound title-card observations
 
 Status: repeated observation from Filmora 15.6.4.11894 on macOS. A generated
-one-card copy opens in Filmora and produces a rendered title thumbnail. Its
-post-save round-trip is still pending.
+one-card copy opens in Filmora and produces a rendered title thumbnail. A
+nine-card regression copy built from an exact current source hash opens, saves to
+a new path, preserves its semantic map, passes the format eval, and reopens.
 
 ## Repeated UI result
 
@@ -92,8 +93,9 @@ experiment showed that changing the timestamp alone makes Filmora reject the
 project as incompatible. The command now runs `audit-title-card-copy` before it
 returns, which catches that regression and removes an invalid generated output.
 
-The final compatibility gate is to open the generated copy in Filmora 15.6.4,
-inspect all new cards, save it again, and diff that save against the generated file.
+The automated acceptance gate still ends with Filmora itself. Open the generated
+copy in the originating build, inspect the new cards, save it to a new path, run
+`eval-format`, and reopen that Filmora-saved copy.
 
 ## Application-load result
 
@@ -105,6 +107,13 @@ On macOS with Filmora 15.6.4.11894:
 - a generated one-card copy that changed `project_date_modify` was rejected;
 - the same generated graph with the source timestamp preserved loaded;
 - Filmora generated a `LOAD TEST` title-card thumbnail from the cloned graph.
+- the fresh current-source nine-card regression loaded and showed added-card thumbnails;
+- Filmora saved that graph to a new path and reopened the saved copy;
+- the saved copy passed every current format probe.
+
+The content spec used for that regression is obsolete because the current source
+already contains headings 6 through 14. The successful file proves graph-copy and
+round-trip compatibility only; it must not be treated as a current edit deliverable.
 
 ## Save-time normalization
 
@@ -114,3 +123,10 @@ all main camera clips after one card by exactly 31 frames. This confirms that
 timeline IDs and downstream positions must be read from the latest source save;
 they cannot be cached between runs. Use `--expect-sha256` whenever an open Filmora
 session may autosave while a copy is being prepared.
+
+A historical, now-stale nine-card fixture normalized one conflicting standalone
+cache copy into an unreferenced standalone-only timeline. That timeline's root
+carried its own source-resource definition. Cache conflicts should still fail the
+pre-open format eval because they signal stale input or generator drift, even
+though this Filmora build repaired the tested conflict on Save As. The fresh
+current-source regression had no cache conflicts before or after Save As.

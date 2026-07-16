@@ -128,6 +128,44 @@ def evaluate_project(path: Pathish) -> Dict[str, Any]:
         )
     )
 
+    transition_count = 0
+    transitions_in_valid_groups = 0
+    invalid_transition_groups: List[str] = []
+    for transition in mapped.get("transitions") or []:
+        count = transition.get("count", 0)
+        if not isinstance(count, int):
+            count = 0
+        transition_count += count
+        duration = transition.get("duration_ticks") or {}
+        duration_count = duration.get("count", 0)
+        numeric_range = duration.get("numeric_range")
+        minimum = numeric_range[0] if isinstance(numeric_range, list) and numeric_range else None
+        complete_positive_range = (
+            duration_count == count
+            and isinstance(minimum, (int, float))
+            and not isinstance(minimum, bool)
+            and minimum > 0
+        )
+        if complete_positive_range:
+            transitions_in_valid_groups += count
+        else:
+            invalid_transition_groups.append(
+                "{0}:{1}".format(transition.get("position"), transition.get("id"))
+            )
+    probes.append(
+        _probe(
+            "transition_ranges_valid",
+            not invalid_transition_groups,
+            "{0}/{1} transitions are in groups with complete positive ranges{2}".format(
+                transitions_in_valid_groups,
+                transition_count,
+                "; invalid groups: {0}".format(", ".join(invalid_transition_groups))
+                if invalid_transition_groups
+                else "",
+            ),
+        )
+    )
+
     titles = mapped.get("titles") or {}
     invalid_titles = titles.get("invalid_json_count", 0)
     probes.append(

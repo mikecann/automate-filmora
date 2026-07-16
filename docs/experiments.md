@@ -44,15 +44,17 @@ python3 -m filmora_wfp eval-format after.wfp
 
 The disposable sequence now covers blank save, media import, timeline insertion,
 linked A/V split at an exact time, Basic Title insertion, and a Filmora-native
-round trip of a generated title-card copy. See
+round trip of a generated title-card copy. A second controlled batch covered
+track lock/mute persistence, source-clip rotation, linked Dissolve insertion,
+transition duration, and transition removal. See
 [`format/observations-15.6.4.md`](format/observations-15.6.4.md) for the sanitized
 results.
 
 Still open:
 
-- one transition added and removed;
-- one effect parameter changed by a known amount;
-- track reorder, mute, lock, and visibility toggles;
+- more transition modes and transition parameters;
+- more effect parameters and effect insertion/removal;
+- track creation, reorder, visibility, and solo;
 - compound creation and unpacking;
 - repeated experiment on the next Filmora build.
 
@@ -60,6 +62,22 @@ The Basic Title text experiment is complete for mirrored text serialization and
 byte-size handling. Arbitrary text auto-sizing remains open because Filmora also
 updates `ScaleX` and the transform effect's `Scale_x` when the replacement width
 changes.
+
+### 2026-07-16 controlled batch
+
+- Filmora: `15.6.4.11894`
+- macOS: `26.5.2 (25F84)`
+- source: disposable copy under ignored `work/`; no user project opened or written
+- rotation pair: `0b1f9145...` at 0 degrees, `29fa1e4d...` at 10 degrees
+- transition baseline: `021191a5...`
+- two-second Dissolve plus audio fade: `a042309f...`
+- one-second linked duration: `4286fa0d...`
+- transition removed by undo: `73696a37...`
+
+The exact controls were Basic > Rotate, Transitions > Dissolve > Apply, the
+timeline Duration button, and Undo. Every frozen snapshot passed `eval-format`.
+The track Lock and Mute controls reverted after reopening their saved copies, so
+they are recorded as session-state observations rather than writer targets.
 
 ## Writer acceptance gate
 

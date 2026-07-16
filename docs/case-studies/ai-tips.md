@@ -4,7 +4,12 @@ Source project: `AI Tips.wfp`, created and modified by Filmora 15.6.4.11894 on
 macOS. The original project and its absolute media paths are intentionally not
 stored in this repository.
 
-## Project shape
+This study spans several Filmora saves. Counts in the next two sections describe
+the smaller starting save used for the first copy experiment. The current source
+at SHA-256 `8d264f5910d...` is about 2.58 MB and maps to 121 archive members,
+55 canonical timelines, 46 title buffers, and 61 transitions.
+
+## Historical starting shape
 
 - ZIP size: about 319 KB.
 - Uncompressed members: about 2.8 MB across 22 files.
@@ -40,7 +45,8 @@ at size 32 with character spacing 5. Both use title animation ID `274`.
 
 ## Copy experiment
 
-The copy-only writer cloned timeline `15` nine times to add tips 6 through 14.
+The original copy-only experiment cloned timeline `15` nine times to add tips 6
+through 14.
 That generated project contains 44 timelines, 17 timeline documents, 15 paired
 nested placements, and 28 decoded non-empty title layers. ZIP validation, media
 resolution, timeline-reference validation, and identifier/routing audits pass.
@@ -54,8 +60,26 @@ value. A one-second timestamp-only change reproduced the same rejection.
 
 After preserving both fields, a generated one-card copy loaded in Filmora
 15.6.4.11894 and Filmora rendered its changed `LOAD TEST` title in the media
-thumbnail. The fixed nine-card copy passes the source-aware audit. Its application
-open/save round-trip remains pending.
+thumbnail. The historical nine-card copy also opened, but a fresh source-aware
+audit now proves that file is stale relative to the current source. Keep it only
+as load-test evidence.
+
+That stale generated file had one conflicting standalone timeline cache copy. Filmora
+tolerated it and converted it during Save As into an unreferenced,
+standalone-only timeline with resources declared in that standalone document
+root. This exposed and fixed an eval bug: `sourceUuid` definitions must be
+collected from every timeline document root, not only the routed main document.
+
+The current regression was rebuilt from the exact source hash into an ignored
+fixture. It added nine card graphs and 18 title layers, changed only the routed
+main timeline, media index, and project metadata, removed nothing, and passed
+both the source-aware audit and `eval-format`. It opened in Filmora, displayed
+added-card thumbnails, saved to a new path, retained identical semantic counts,
+passed `eval-format` again, and reopened.
+
+The current source already contains tip-card headings 6 through 14. The old
+nine-card content spec therefore creates duplicates and is now a regression
+fixture only, not a usable edit for the current project.
 
 A Filmora save occurred during the experiment. It compacted the previously sparse
 nested IDs into the contiguous range `10` through `25`, set `serialNumber` to
@@ -70,4 +94,6 @@ same amount.
 - Meaning of timeline `type` values `0` and `1`.
 - Exact distinction between nested clip types `6`, `7`, and `16`.
 - Whether Filmora recalculates any title metrics or archive metadata on first save.
-- Whether all nine generated cards render identically before and after that save.
+- Whether every generated card's complete animation renders identically before
+  and after the save; the load test verified visible added-card thumbnails but did
+  not play every animation end to end.

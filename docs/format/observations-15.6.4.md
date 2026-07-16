@@ -94,6 +94,12 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | 04 | add Basic Title at playhead | type `7` parent placement, new nested timeline, type `4` title clip |
 | 05-06 | edit Basic Title text through properties panel | updated both text mirrors, byte size, script scale, and transform scale |
 | 06-07 | repeat with same-byte-length text | only `Text` and `TextData[0].CharData` changed |
+| track lock | toggle one Lock Track control, save, reopen | control returned to its original state; no persisted track field identified |
+| track mute | toggle one Mute control, save, reopen | control returned to its original state; no persisted track field identified |
+| rotation | change one source clip from 0 to 10 degrees | added `Rotation` with `paramType: 3` and `unValue: 10.0` to its Basic transform |
+| transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
+| transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
+| transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |
 
 The basic title defaulted to five seconds and extended the project to 7.48
 seconds. Its title document was 3,467 UTF-8 bytes with `scriptBufSize` 3,468. The
@@ -101,8 +107,14 @@ title transform duplicated script values: effect `Position_y` matched `PosY`,
 and effect scale percentages matched `ScaleX` and `ScaleY` multiplied by 100.
 
 The first title-properties application performed a broad normalization pass, but
-the repeated same-length edit isolated the two mirrored text fields cleanly. A
-transition add/remove pass remains open.
+the repeated same-length edit isolated the two mirrored text fields cleanly.
+Repeated saves also reorder keyed arrays and rotate opaque IDs, so raw JSON diff
+output remains noisy. The semantic mapper is the better comparison surface.
+
+The tested Lock Track and Mute controls behaved as editor-session state in this
+build. That is deliberately narrower than claiming all track controls are absent
+from the project format. Visibility, solo, track reorder, and track creation still
+need isolated experiments.
 
 ## Filmora-native round trip
 
@@ -117,6 +129,13 @@ to another new path. The before and after semantic maps matched exactly for:
 Filmora still rewrote every numeric timeline ID and every corresponding reference.
 It also rotated `project_guid`, `project_source`, and `project_date_modify`, updated
 the stored filename and save path, and removed three stale nested thumbnails.
+
+A later nine-card round trip exposed another cache normalization. The generated
+file opened and rendered, despite one standalone timeline conflicting with the
+routed main copy. Save As converted that conflict into an unreferenced,
+standalone-only timeline. Its source resource was declared in the standalone
+document root rather than the routed main root. Resource-reference evals must
+therefore union definitions from every timeline document root.
 
 That round trip proves two useful things. Semantic map comparison is more stable
 than raw JSON diffing, and Filmora itself must remain the final compatibility gate.

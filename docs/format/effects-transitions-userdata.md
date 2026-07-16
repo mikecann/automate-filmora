@@ -28,6 +28,24 @@ observed ID/display pair, count, parameter name, value type, and numeric range.
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 
+### Controlled rotation change
+
+On a disposable type `1` visual clip, changing Rotate from `0` to `10` in the
+Basic properties panel added this parameter to the existing Basic transform:
+
+```json
+{
+  "name": "Rotation",
+  "fxParam": {"paramType": 3, "unValue": 10.0}
+}
+```
+
+The owning effect had `id: "video/effect/transform"` and
+`display: "transform"`. The tested zero-degree save did not contain a
+`Rotation` parameter at all. That is an omission rule for this clip, not a
+universal rule: the production sample contained one explicitly serialized
+zero-degree `Rotation` value.
+
 ## Transitions
 
 Transitions are not a separate top-level timeline list. They appear on clips as:
@@ -43,6 +61,32 @@ cuts, pushes, diagonal transitions, fades, and audio fades.
 
 Placement matters. A transition with the same display name can appear as a pre or
 post transition, so automation must preserve both its body and its owning side.
+
+### Controlled Dissolve change
+
+Applying Filmora's Dissolve to the selected second half of a linked A/V clip
+created two `postTransition` objects:
+
+| Owning clip | Display | ID |
+| --- | --- | --- |
+| visual type `1` | `Dissolve` | `2981D185-D52E-44f4-ABD5-3CE83890E32E` |
+| audio type `2` | `audio fade` | `audio/blender/transition-fade` |
+
+At two seconds, both transitions covered timeline ticks `30,000,000` through
+`50,000,000`. Changing Duration to one second through Filmora's Duration Setting
+dialog moved both starts to `40,000,000` and kept both ends at `50,000,000`.
+That confirms duration is `tlEnd - tlBegin` for these objects and that Filmora
+keeps the linked visual and audio ranges together for this edit.
+
+Undoing the insertion removed both objects and returned the project from 26 to
+24 unique `thisUId` values. The audio object also contained
+`includeTrimFrames: false`; the current evidence does not justify assigning a
+broader meaning to that flag.
+
+The format eval now requires every observed transition group to have a complete,
+positive numeric range. A future Filmora build failing that probe may represent
+format drift rather than corruption, so inspect the new structure before changing
+the rule.
 
 ## Base64 `userData`
 

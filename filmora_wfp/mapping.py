@@ -613,7 +613,6 @@ def _user_data_map(
 
 def _identifier_map(
     archive: WfpArchive,
-    main: Dict[str, Any],
     canonical: Sequence[Tuple[str, Dict[str, Any]]],
     media_ids: Set[str],
 ) -> Dict[str, Any]:
@@ -623,8 +622,14 @@ def _identifier_map(
     source_references: Counter[str] = Counter()
     identifier_fields: DefaultDict[str, List[Any]] = defaultdict(list)
 
-    resources = main.get("resources")
-    if isinstance(resources, list):
+    # Standalone-only timelines can carry resources in their own document root.
+    # Filmora 15.6.4 creates this shape when it normalizes a conflicting cache
+    # copy during Save As, so definitions cannot be scoped to the routed main
+    # timeline document alone.
+    for _member, document in archive.timeline_documents():
+        resources = document.get("resources")
+        if not isinstance(resources, list):
+            continue
         for resource in resources:
             if isinstance(resource, dict) and isinstance(resource.get("sourceUuid"), str):
                 source_definitions.add(resource["sourceUuid"])
@@ -915,5 +920,5 @@ def map_project(path: Pathish, reveal_paths: bool = False) -> Dict[str, Any]:
             "effects": effects,
             "transitions": transitions,
             "user_data": _user_data_map(canonical, media_ids),
-            "identifiers": _identifier_map(archive, main, canonical, media_ids),
+            "identifiers": _identifier_map(archive, canonical, media_ids),
         }
