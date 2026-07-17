@@ -135,11 +135,18 @@ The tools can currently:
   through declarative edit-plan API version 3;
 - replace one already-present video-clip Rotation value with a source-aware audit;
 - change or remove one already-present linked Dissolve/audio-fade pair with a
-  source-aware audit.
+  source-aware audit;
+- move one transition-free linked type-1/type-2 A/V pair within the already
+  declared project duration, rejecting same-track collisions and auditing the
+  exact four placement fields.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
 before it should be trusted for production editing.
+
+The linked A/V move is currently a guarded Python primitive, not an edit-plan
+operation. API/schema version 3 remains immutable; promotion requires a future
+versioned schema after broader fixture coverage.
 
 ## Related work
 

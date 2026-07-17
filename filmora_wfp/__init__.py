@@ -29,6 +29,7 @@ from .edit_plan import (
 )
 from .evals import evaluate_project
 from .mapping import map_project
+from .linked_av import audit_linked_av_move_copy, move_linked_av_pair, preflight_linked_av_move
 from .rotation import (
     audit_clip_rotation_copy,
     preflight_clip_rotation,
@@ -83,6 +84,9 @@ __all__ = [
     "load_edit_plan",
     "load_title_card_spec",
     "map_project",
+    "audit_linked_av_move_copy",
+    "move_linked_av_pair",
+    "preflight_linked_av_move",
     "project_sha256",
     "preflight_clip_rotation",
     "preflight_linked_transition",

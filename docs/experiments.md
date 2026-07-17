@@ -46,7 +46,7 @@ The disposable sequence now covers blank save, media import, timeline insertion,
 linked A/V split at an exact time, Basic Title insertion, and a Filmora-native
 round trip of a generated title-card copy. A second controlled batch covered
 track lock/mute persistence, source-clip rotation, linked Dissolve insertion,
-transition duration, and transition removal. See
+transition duration, transition removal, and a linked A/V timeline move. See
 [`format/observations-15.6.4.md`](format/observations-15.6.4.md) for the sanitized
 results.
 
@@ -194,10 +194,41 @@ API version 3 and plan schema version 3 expose the accepted rotation and linked
 transition operations with selectors discovered from the current source. Earlier
 published schemas remain unchanged and supported.
 
-The next controlled Filmora batch should evaluate operations in this order:
+## Existing linked A/V move acceptance
 
-1. move or trim a linked A/V pair;
-2. split a linked A/V pair and verify every regenerated identifier.
+A same-session undo/redo pair isolated the move of one transition-free linked
+type-1/type-2 source pair by one second. Both clips retained their source range,
+source UUID, stream selection, effects, and instance IDs. Only these four values
+changed:
+
+- visual `tlBegin`: `24,800,000` to `34,800,000`;
+- visual `tlEnd`: `50,000,000` to `60,000,000`;
+- audio `tlBegin`: `24,800,000` to `34,800,000`;
+- audio `tlEnd`: `50,000,000` to `60,000,000`.
+
+A separate direct UI drag on adjacent clips triggered Filmora's magnetic
+overwrite behaviour and removed the second pair. That snapshot is rejected as
+move evidence. The writer therefore does not attempt to reproduce magnetic
+timeline editing.
+
+The narrow writer reproduced the isolated four-field move on a disposable
+project whose title track already extended beyond the requested new end. It
+rejects transitions, mismatched pair bounds or sources, same-track overlap, and
+any move beyond the existing `project_timeline_duration`. Filmora 15.6.4.11894
+opened the generated copy, visibly showed both pairs with the intended one-second
+gap, saved it to a new path, and reopened it. The Filmora-saved copy retained
+both linked clips at `34,800,000` through `60,000,000` and passed every format
+probe.
+
+This operation is exported as a guarded Python primitive but is deliberately
+absent from edit-plan schema version 3. Published schemas are immutable, and one
+accepted fixture is not enough reason to rush an API version 4.
+
+The next controlled Filmora batch should evaluate:
+
+1. trim a linked A/V pair and correlate source/timeline ranges;
+2. split a linked A/V pair and verify every regenerated identifier;
+3. repeat linked movement on negative offsets and more track layouts.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

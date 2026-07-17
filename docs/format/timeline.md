@@ -150,3 +150,24 @@ kept their object IDs and shortened their ranges. The second halves received new
 clip and effect instance IDs, started at tick 24,800,000, and retained the same
 resource and stream references. `speed.offset` and `speed.offsetEnd` tracked the
 new source ranges in seconds in this experiment.
+
+### Controlled linked-pair move
+
+Moving the second transition-free linked visual/audio pair one second later in a
+same-session normalized experiment changed only both clips' `tlBegin` and
+`tlEnd`. The range moved from `24,800,000..50,000,000` to
+`34,800,000..60,000,000`; its duration, `inPoint`/`outPoint`, `sourceUuid`, clip
+IDs, and effects stayed unchanged.
+
+When the move extends the furthest occupied end, Filmora also updates
+`project_info.project_timeline_duration` and duration fields in
+`medias_info.json`. Those project-wide derived fields are not yet automated. The
+accepted writer instead requires the requested new end to fit within the
+project's already declared duration and rejects collisions on either selected
+track. It changes exactly the four local placement fields. Filmora 15.6.4.11894
+opened, saved, and reopened such a generated copy while preserving the moved
+range.
+
+This is direct placement evidence, not a model of Filmora's magnetic timeline.
+Dragging an adjacent linked pair in another controlled attempt invoked overwrite
+behaviour and removed clips rather than performing a simple move.
