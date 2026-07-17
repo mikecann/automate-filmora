@@ -105,6 +105,19 @@ Undoing the insertion removed both objects and returned the project from 26 to
 `includeTrimFrames: false`; the current evidence does not justify assigning a
 broader meaning to that flag.
 
+Two narrow writers reproduced those UI edits on disposable copies. The duration
+writer changed only the two `postTransition.tlBegin` values from `30,000,000` to
+`40,000,000`; the removal writer deleted only the paired `postTransition`
+objects. Filmora 15.6.4.11894 opened both generated projects, saved each to a new
+path, preserved the requested state, and reopened both saved copies. The saved
+duration copy retained the matched `40,000,000` through `50,000,000` ranges and
+the saved removal copy contained no transitions.
+
+This only proves an already-present linked visual Dissolve and audio fade with
+the exact IDs above, matching owner ranges, and transitions contained at the end
+of those clips. It does not authorize transition insertion, another transition
+asset, a pre-transition, or an unlinked edit.
+
 The format eval now requires every observed transition group to have a complete,
 positive numeric range. A future Filmora build failing that probe may represent
 format drift rather than corruption, so inspect the new structure before changing

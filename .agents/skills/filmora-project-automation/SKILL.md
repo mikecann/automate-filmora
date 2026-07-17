@@ -19,7 +19,8 @@ actual project and Filmora build before asserting field semantics.
 - If the user requests a mutation, create a new output file and make one narrow,
   named change. Current writers cover the observed compound title-card graph,
   same-serialization-length title replacement, and replacement of an existing
-  video Rotation value. There is no generic writer.
+  video Rotation value, plus duration replacement or removal of the exact
+  observed linked Dissolve/audio-fade pair. There is no generic writer.
 
 ## Inspect a project
 

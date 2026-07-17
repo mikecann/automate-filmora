@@ -132,7 +132,9 @@ The tools can currently:
 - explain a strict, versioned edit plan without writing;
 - apply proven title-card cloning and equal-serialization-length title replacement
   through the declarative API.
-- replace one already-present video-clip Rotation value with a source-aware audit.
+- replace one already-present video-clip Rotation value with a source-aware audit;
+- change or remove one already-present linked Dissolve/audio-fade pair with a
+  source-aware audit.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

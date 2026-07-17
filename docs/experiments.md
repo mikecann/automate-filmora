@@ -176,12 +176,24 @@ copy passed every format probe, and it reopened successfully. Missing Rotation
 parameters remain unsupported; the evidence only covers replacement of an
 already-present value.
 
+## Existing linked transition acceptance
+
+Using the controlled two-second Dissolve/audio-fade fixture, the duration writer
+moved exactly the two `postTransition.tlBegin` values from `30,000,000` to
+`40,000,000`. Using the controlled one-second fixture, the removal writer deleted
+exactly the two paired `postTransition` objects. Both outputs passed the
+source-aware audit and every format probe.
+
+Filmora 15.6.4.11894 opened both generated copies and saved each to another new
+path. The one-second saved copy retained both matched transition ranges, the
+removal copy contained none, both passed `eval-format`, and both reopened. The
+writers remain restricted to the exact observed visual Dissolve and linked audio
+fade IDs, matching type-1/type-2 owner clips, and an existing end-contained pair.
+
 The next controlled Filmora batch should evaluate operations in this order:
 
-1. change the duration of an existing linked transition pair;
-2. remove an existing linked transition pair;
-3. move or trim a linked A/V pair;
-4. split a linked A/V pair and verify every regenerated identifier.
+1. move or trim a linked A/V pair;
+2. split a linked A/V pair and verify every regenerated identifier.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

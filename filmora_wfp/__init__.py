@@ -37,6 +37,13 @@ from .title_text import (
     preflight_title_text_replacement,
     replace_title_text,
 )
+from .transitions import (
+    audit_linked_transition_duration_copy,
+    audit_linked_transition_removal_copy,
+    preflight_linked_transition,
+    remove_linked_transition,
+    replace_linked_transition_duration,
+)
 
 __all__ = [
     "WfpArchive",
@@ -55,6 +62,8 @@ __all__ = [
     "apply_edit_plan",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
+    "audit_linked_transition_duration_copy",
+    "audit_linked_transition_removal_copy",
     "edit_plan_schema",
     "audit_title_card_copy",
     "diff_projects",
@@ -70,9 +79,12 @@ __all__ = [
     "map_project",
     "project_sha256",
     "preflight_clip_rotation",
+    "preflight_linked_transition",
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
+    "replace_linked_transition_duration",
+    "remove_linked_transition",
     "survey_projects",
     "validate_project",
 ]

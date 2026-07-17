@@ -30,7 +30,9 @@ from filmora_wfp import (
     map_project,
     project_sha256,
     replace_clip_rotation,
+    replace_linked_transition_duration,
     replace_title_text,
+    remove_linked_transition,
     survey_projects,
     validate_project,
 )
@@ -104,6 +106,125 @@ def _replace_text_plan(source: Path) -> dict:
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_linked_transition_duration_and_removal_change_only_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_linked_transition(timeline):
+                audio = {
+                    "type": 2,
+                    "thisUId": "audio-source-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 70_000_000,
+                    "inPoint": 0,
+                    "outPoint": 30_000_000,
+                    "postTransition": {
+                        "id": "audio/blender/transition-fade",
+                        "display": "audio fade",
+                        "thisUId": "audio-transition",
+                        "type": 5,
+                        "tlBegin": 50_000_000,
+                        "tlEnd": 70_000_000,
+                    },
+                }
+                video = {
+                    "type": 1,
+                    "thisUId": "video-source-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 70_000_000,
+                    "inPoint": 0,
+                    "outPoint": 30_000_000,
+                    "postTransition": {
+                        "id": "2981D185-D52E-44f4-ABD5-3CE83890E32E",
+                        "display": "Dissolve",
+                        "thisUId": "video-transition",
+                        "type": 5,
+                        "tlBegin": 50_000_000,
+                        "tlEnd": 70_000_000,
+                    },
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(audio)
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(video)
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_linked_transition)
+            source_before = source.read_bytes()
+            duration_output = root / "duration.wfp"
+            duration_result = replace_linked_transition_duration(
+                source,
+                duration_output,
+                video_clip_uid="video-source-clip",
+                audio_clip_uid="audio-source-clip",
+                old_duration_ticks=20_000_000,
+                new_duration_ticks=10_000_000,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(duration_result["audit"]["valid"], duration_result)
+            duration_changes = diff_projects(source, duration_output)["json_changes"]
+            self.assertEqual(len(duration_changes), 2)
+            self.assertTrue(
+                all(change["path"].endswith(".postTransition.tlBegin") for change in duration_changes)
+            )
+            self.assertEqual({change["after"] for change in duration_changes}, {60_000_000})
+
+            removal_output = root / "removed.wfp"
+            removal_result = remove_linked_transition(
+                source,
+                removal_output,
+                video_clip_uid="video-source-clip",
+                audio_clip_uid="audio-source-clip",
+                expected_duration_ticks=20_000_000,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(removal_result["audit"]["valid"], removal_result)
+            removal_changes = diff_projects(source, removal_output)["json_changes"]
+            self.assertEqual(len(removal_changes), 2)
+            self.assertTrue(
+                all(
+                    change["kind"] == "removed"
+                    and change["path"].endswith(".postTransition")
+                    for change in removal_changes
+                )
+            )
+            with self.assertRaisesRegex(WfpError, "begins before its linked clips"):
+                replace_linked_transition_duration(
+                    source,
+                    root / "too-long.wfp",
+                    video_clip_uid="video-source-clip",
+                    audio_clip_uid="audio-source-clip",
+                    old_duration_ticks=20_000_000,
+                    new_duration_ticks=40_000_000,
+                )
+
+    def test_linked_transition_writer_rejects_partial_or_stale_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_partial_pair(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "video-source-clip",
+                        "postTransition": {
+                            "id": "2981D185-D52E-44f4-ABD5-3CE83890E32E",
+                            "tlBegin": 50_000_000,
+                            "tlEnd": 70_000_000,
+                        },
+                    }
+                )
+
+            partial = _rewrite_main_timeline(base, root / "partial.wfp", add_partial_pair)
+            with self.assertRaisesRegex(WfpError, "resolve together"):
+                remove_linked_transition(
+                    partial,
+                    root / "output.wfp",
+                    video_clip_uid="video-source-clip",
+                    audio_clip_uid="missing-audio",
+                    expected_duration_ticks=20_000_000,
+                )
+
     def test_replace_existing_clip_rotation_changes_only_selected_value(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
