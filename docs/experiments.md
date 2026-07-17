@@ -163,13 +163,25 @@ API version 2 and plan schema version 2 now expose this as
 operation requires a source hash, exact clip UID, exact old text, and refuses a
 replacement unless the actual serialized `scriptBuf` byte length is unchanged.
 
+## Existing rotation replacement acceptance
+
+Using the normalized 10-degree fixture as source, the narrow rotation writer
+changed the selected type-1 video clip's existing `Rotation` value from `10.0`
+to `20.0`. The source-aware diff contained exactly one semantic change under the
+clip's `video/effect/transform`, and `eval-format` passed.
+
+Filmora 15.6.4.11894 opened the generated copy and visibly rendered only the
+first source clip at 20 degrees. Save As preserved the value, the Filmora-saved
+copy passed every format probe, and it reopened successfully. Missing Rotation
+parameters remain unsupported; the evidence only covers replacement of an
+already-present value.
+
 The next controlled Filmora batch should evaluate operations in this order:
 
-1. change an existing source clip's Basic rotation value;
-2. change the duration of an existing linked transition pair;
-3. remove an existing linked transition pair;
-4. move or trim a linked A/V pair;
-5. split a linked A/V pair and verify every regenerated identifier.
+1. change the duration of an existing linked transition pair;
+2. remove an existing linked transition pair;
+3. move or trim a linked A/V pair;
+4. split a linked A/V pair and verify every regenerated identifier.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

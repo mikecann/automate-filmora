@@ -26,6 +26,11 @@ from .edit_plan import (
 )
 from .evals import evaluate_project
 from .mapping import map_project
+from .rotation import (
+    audit_clip_rotation_copy,
+    preflight_clip_rotation,
+    replace_clip_rotation,
+)
 from .title_cards import clone_title_cards, load_title_card_spec
 from .title_text import (
     audit_title_text_copy,
@@ -49,6 +54,7 @@ __all__ = [
     "TitleCardTemplateSelector",
     "apply_edit_plan",
     "audit_title_text_copy",
+    "audit_clip_rotation_copy",
     "edit_plan_schema",
     "audit_title_card_copy",
     "diff_projects",
@@ -63,8 +69,10 @@ __all__ = [
     "load_title_card_spec",
     "map_project",
     "project_sha256",
+    "preflight_clip_rotation",
     "preflight_title_text_replacement",
     "replace_title_text",
+    "replace_clip_rotation",
     "survey_projects",
     "validate_project",
 ]

@@ -29,6 +29,7 @@ from filmora_wfp import (
     load_edit_plan,
     map_project,
     project_sha256,
+    replace_clip_rotation,
     replace_title_text,
     survey_projects,
     validate_project,
@@ -103,6 +104,119 @@ def _replace_text_plan(source: Path) -> dict:
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_replace_existing_clip_rotation_changes_only_selected_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_rotation(timeline):
+                clip = {
+                    "type": 1,
+                    "thisUId": "video-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "inPoint": 0,
+                    "outPoint": 20_000_000,
+                }
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(clip)
+                clip["effectChainList"] = [
+                    {
+                        "effectList": [
+                            {
+                                "id": "video/effect/transform",
+                                "thisUId": "rotation-effect",
+                                "paramList": [
+                                    {"name": "dwValue", "fxParam": {"paramType": 5, "unValue": 1}},
+                                    {
+                                        "name": "EnableTransform",
+                                        "fxParam": {"paramType": 5, "unValue": 1},
+                                    },
+                                    {
+                                        "name": "Rotation",
+                                        "fxParam": {"paramType": 3, "unValue": 10.0},
+                                    },
+                                ],
+                            }
+                        ]
+                    }
+                ]
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_rotation)
+            source_before = source.read_bytes()
+            output = root / "output.wfp"
+            result = replace_clip_rotation(
+                source,
+                output,
+                clip_uid="video-clip",
+                old_rotation="10.0",
+                new_rotation="20.0",
+                expected_source_sha256=project_sha256(source),
+            )
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(output.is_file())
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(result["audit"]["details"]["rotation_occurrences_changed"], 1)
+            changes = diff_projects(source, output)["json_changes"]
+            self.assertEqual(len(changes), 1)
+            self.assertTrue(changes[0]["path"].endswith(".fxParam.unValue"))
+            self.assertEqual(changes[0]["before"], 10.0)
+            self.assertEqual(changes[0]["after"], 20.0)
+
+    def test_replace_existing_clip_rotation_rejects_missing_or_stale_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_unrotated_clip(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "video-clip",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "inPoint": 0,
+                        "outPoint": 20_000_000,
+                    }
+                )
+
+            source = _rewrite_main_timeline(
+                base, root / "source.wfp", add_unrotated_clip
+            )
+            with self.assertRaisesRegex(WfpError, "exactly one existing Rotation"):
+                replace_clip_rotation(
+                    source,
+                    root / "missing.wfp",
+                    clip_uid="video-clip",
+                    old_rotation=0,
+                    new_rotation=10,
+                )
+
+            def add_rotation(timeline):
+                clip = timeline["timelineInfos"][0]["trackInfos"][1]["clipList"][-1]
+                clip["effectChainList"] = [
+                    {
+                        "effectList": [
+                            {
+                                "id": "video/effect/transform",
+                                "paramList": [
+                                    {"name": "Rotation", "fxParam": {"unValue": 10.0}}
+                                ],
+                            }
+                        ]
+                    }
+                ]
+
+            rotated = _rewrite_main_timeline(source, root / "rotated.wfp", add_rotation)
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                replace_clip_rotation(
+                    rotated,
+                    root / "stale.wfp",
+                    clip_uid="video-clip",
+                    old_rotation=5,
+                    new_rotation=20,
+                )
+
     def test_replace_title_text_changes_only_equal_length_mirrors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

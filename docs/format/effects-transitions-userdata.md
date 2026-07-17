@@ -52,6 +52,17 @@ The owning effect had `id: "video/effect/transform"` and
 universal rule: the production sample contained one explicitly serialized
 zero-degree `Rotation` value.
 
+A narrow writer then changed the already-present value from `10.0` to `20.0`
+without adding or removing fields. Its source-aware diff contained exactly one
+semantic change at the selected parameter's `fxParam.unValue`. Filmora
+15.6.4.11894 opened the generated project and visibly rendered the first source
+clip at 20 degrees while leaving the neighboring clip unchanged. Filmora Save As
+preserved `20.0`, the saved project passed every format probe, and it reopened.
+
+This proves replacement of one existing `Rotation` parameter. It does not yet
+authorize inserting a missing Rotation parameter or changing other transform
+parameters.
+
 ## Transitions
 
 Transitions are not a separate top-level timeline list. They appear on clips as:

@@ -17,8 +17,9 @@ actual project and Filmora build before asserting field semantics.
   experiment proves their meaning.
 - Do not run third-party Filmora executables. Inspect source code only.
 - If the user requests a mutation, create a new output file and make one narrow,
-  named change. The only current writer clones the observed compound title-card
-  graph; there is no generic writer.
+  named change. Current writers cover the observed compound title-card graph,
+  same-serialization-length title replacement, and replacement of an existing
+  video Rotation value. There is no generic writer.
 
 ## Inspect a project
 
