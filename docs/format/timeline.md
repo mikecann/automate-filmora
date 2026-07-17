@@ -171,3 +171,18 @@ range.
 This is direct placement evidence, not a model of Filmora's magnetic timeline.
 Dragging an adjacent linked pair in another controlled attempt invoked overwrite
 behaviour and removed clips rather than performing a simple move.
+
+### Controlled linked-pair end trim
+
+Shortening the same forward 1x linked pair's end by one second changed three
+fields on each clip. `tlEnd` moved from `60,000,000` to `50,000,000`, the
+absolute source `outPoint` moved from `50,000,000` to `40,000,000`, and
+`speed.offsetEnd` moved from `5.0` to `4.0`. Filmora left `tlBegin`, `inPoint`,
+`speed.offset`, and the serialized `speedParam` unchanged.
+
+The accepted writer is limited to this relationship. It confirms that source
+and timeline durations match at 1x speed, that both clips expose identical
+forward constant-speed state, and that the requested end retains a positive
+range. It does not claim support for reverse, variable-speed, transitioned,
+start-trimmed, or duration-extending clips. Filmora opened, saved, and reopened
+the generated six-field copy, and the saved copy retained all six values.

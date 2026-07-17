@@ -22,7 +22,8 @@ actual project and Filmora build before asserting field semantics.
   video Rotation value, plus duration replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
   move that stays inside the declared project duration without same-track
-  collisions. There is no generic writer.
+  collisions, plus a shortening end trim for a transition-free forward 1x
+  linked pair. There is no generic writer.
 
 ## Inspect a project
 
@@ -128,9 +129,10 @@ exact current source SHA-256 and the output must not exist. If an operation is n
 listed by `edit-targets`, do not encode it as an edit plan until it passes the
 controlled experiment and writer acceptance workflow.
 
-The linked A/V move is currently Python-only through `move_linked_av_pair`.
-Do not add it to schema version 3; published schemas are immutable. Require a new
-API/schema version and more fixture coverage before declarative promotion.
+The linked A/V move and end trim are currently Python-only through
+`move_linked_av_pair` and `trim_linked_av_pair_end`. Do not add them to schema
+version 3; published schemas are immutable. Require a new API/schema version and
+more fixture coverage before declarative promotion.
 
 1. Add a targeted command that refuses identical input/output paths.
 2. Copy the input and change the minimum JSON fields.

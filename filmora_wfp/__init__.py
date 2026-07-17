@@ -29,7 +29,14 @@ from .edit_plan import (
 )
 from .evals import evaluate_project
 from .mapping import map_project
-from .linked_av import audit_linked_av_move_copy, move_linked_av_pair, preflight_linked_av_move
+from .linked_av import (
+    audit_linked_av_end_trim_copy,
+    audit_linked_av_move_copy,
+    move_linked_av_pair,
+    preflight_linked_av_end_trim,
+    preflight_linked_av_move,
+    trim_linked_av_pair_end,
+)
 from .rotation import (
     audit_clip_rotation_copy,
     preflight_clip_rotation,
@@ -85,8 +92,11 @@ __all__ = [
     "load_title_card_spec",
     "map_project",
     "audit_linked_av_move_copy",
+    "audit_linked_av_end_trim_copy",
     "move_linked_av_pair",
+    "preflight_linked_av_end_trim",
     "preflight_linked_av_move",
+    "trim_linked_av_pair_end",
     "project_sha256",
     "preflight_clip_rotation",
     "preflight_linked_transition",
@@ -99,4 +109,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"

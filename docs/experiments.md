@@ -46,7 +46,8 @@ The disposable sequence now covers blank save, media import, timeline insertion,
 linked A/V split at an exact time, Basic Title insertion, and a Filmora-native
 round trip of a generated title-card copy. A second controlled batch covered
 track lock/mute persistence, source-clip rotation, linked Dissolve insertion,
-transition duration, transition removal, and a linked A/V timeline move. See
+transition duration, transition removal, a linked A/V timeline move, and a
+linked A/V end trim. See
 [`format/observations-15.6.4.md`](format/observations-15.6.4.md) for the sanitized
 results.
 
@@ -224,11 +225,35 @@ This operation is exported as a guarded Python primitive but is deliberately
 absent from edit-plan schema version 3. Published schemas are immutable, and one
 accepted fixture is not enough reason to rush an API version 4.
 
+## Existing linked A/V end-trim acceptance
+
+Dragging the end of the second linked pair one second earlier shortened both
+clips together. A same-session undo/redo comparison reduced the Filmora-native
+diff to six semantic changes:
+
+- both `tlEnd` values: `60,000,000` to `50,000,000`;
+- both `outPoint` values: `50,000,000` to `40,000,000`;
+- both `speed.offsetEnd` values: `5.0` to `4.0`.
+
+The paired `tlBegin`, `inPoint`, `speed.offset`, IDs, sources, effects, and the
+serialized `speedParam` remained unchanged. This fixture used forward 1x speed.
+
+The narrow writer reproduces exactly those six fields. It requires matching
+type-1/type-2 source and timeline ranges, forward constant 1x speed, matching
+decimal offsets, no transitions, and a new end strictly inside the existing
+positive range. Filmora 15.6.4.11894 opened the generated copy, visibly showed
+the shortened linked pair, saved it to another path, and reopened it. The
+Filmora-saved copy retained `tlEnd: 50,000,000`, `outPoint: 40,000,000`, and
+`speed.offsetEnd: 4.0` on both clips and passed every format probe.
+
+Like movement, end trim is currently a guarded Python primitive and remains out
+of immutable edit-plan schema version 3.
+
 The next controlled Filmora batch should evaluate:
 
-1. trim a linked A/V pair and correlate source/timeline ranges;
+1. trim the start of a linked A/V pair and correlate source/timeline ranges;
 2. split a linked A/V pair and verify every regenerated identifier;
-3. repeat linked movement on negative offsets and more track layouts.
+3. repeat linked movement and trimming on more sources and track layouts.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

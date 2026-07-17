@@ -138,15 +138,17 @@ The tools can currently:
   source-aware audit;
 - move one transition-free linked type-1/type-2 A/V pair within the already
   declared project duration, rejecting same-track collisions and auditing the
-  exact four placement fields.
+  exact four placement fields;
+- shorten the end of one transition-free, forward 1x linked A/V pair while
+  auditing both clips' `tlEnd`, `outPoint`, and `speed.offsetEnd` fields.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
 before it should be trusted for production editing.
 
-The linked A/V move is currently a guarded Python primitive, not an edit-plan
-operation. API/schema version 3 remains immutable; promotion requires a future
-versioned schema after broader fixture coverage.
+The linked A/V move and end trim are currently guarded Python primitives, not
+edit-plan operations. API/schema version 3 remains immutable; promotion requires
+a future versioned schema after broader fixture coverage.
 
 ## Related work
 

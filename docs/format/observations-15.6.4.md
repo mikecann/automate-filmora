@@ -101,6 +101,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |
 | linked A/V move | move a transition-free pair one second later | moved only both clips' `tlBegin`/`tlEnd` in a normalized undo/redo pair |
+| linked A/V end trim | shorten a forward 1x pair by one second | changed both clips' `tlEnd`, `outPoint`, and `speed.offsetEnd` |
 
 The basic title defaulted to five seconds and extended the project to 7.48
 seconds. Its title document was 3,467 UTF-8 bytes with `scriptBufSize` 3,468. The
@@ -123,6 +124,12 @@ duration. Filmora opened the copy, showed both pairs at the expected positions,
 saved it again, and reopened the saved copy. A separate drag against adjacent
 clips invoked magnetic overwrite behaviour instead, so that result was rejected
 as evidence for the local move mapping.
+
+A second guarded writer reproduced the one-second end trim with exactly six
+changes. The generated and Filmora-resaved copies retained `tlEnd: 50,000,000`,
+`outPoint: 40,000,000`, and `speed.offsetEnd: 4.0` on both clips. The saved copy
+reopened and passed all format probes. Evidence remains limited to forward
+constant 1x speed and an end trim that does not extend project duration.
 
 ## Filmora-native round trip
 
