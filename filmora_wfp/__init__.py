@@ -16,6 +16,7 @@ from .edit_plan import (
     EditTargetsResult,
     TitleCardSpec,
     TitleCardTemplateSelector,
+    ReplaceTitleTextOperation,
     apply_edit_plan,
     edit_plan_schema,
     explain_edit_plan,
@@ -26,6 +27,11 @@ from .edit_plan import (
 from .evals import evaluate_project
 from .mapping import map_project
 from .title_cards import clone_title_cards, load_title_card_spec
+from .title_text import (
+    audit_title_text_copy,
+    preflight_title_text_replacement,
+    replace_title_text,
+)
 
 __all__ = [
     "WfpArchive",
@@ -33,6 +39,7 @@ __all__ = [
     "EDIT_PLAN_API_VERSION",
     "EDIT_PLAN_SCHEMA_VERSION",
     "CloneTitleCardsOperation",
+    "ReplaceTitleTextOperation",
     "EditPlan",
     "EditPlanApplicationResult",
     "EditPlanExplanation",
@@ -41,6 +48,7 @@ __all__ = [
     "TitleCardSpec",
     "TitleCardTemplateSelector",
     "apply_edit_plan",
+    "audit_title_text_copy",
     "edit_plan_schema",
     "audit_title_card_copy",
     "diff_projects",
@@ -55,8 +63,10 @@ __all__ = [
     "load_title_card_spec",
     "map_project",
     "project_sha256",
+    "preflight_title_text_replacement",
+    "replace_title_text",
     "survey_projects",
     "validate_project",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

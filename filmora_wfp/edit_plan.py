@@ -12,14 +12,16 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, TypedDict, Union
 
-from .analysis import WFP_TICKS_PER_SECOND
+from .analysis import WFP_TICKS_PER_SECOND, list_titles
 from .archive import WfpArchive, WfpError
 from .evals import evaluate_project
 from .title_cards import clone_title_cards
+from .title_text import preflight_title_text_replacement, replace_title_text
 
 
-EDIT_PLAN_SCHEMA_VERSION = 1
-EDIT_PLAN_API_VERSION = 1
+EDIT_PLAN_SCHEMA_VERSION = 2
+EDIT_PLAN_API_VERSION = 2
+SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2)
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _PLAIN_DECIMAL_RE = re.compile(r"^(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
 
@@ -39,6 +41,7 @@ class EditTargetsResult(TypedDict):
     source: EditPlanSource
     supported_operations: List[str]
     title_card_templates: List[Dict[str, Any]]
+    title_text_targets: List[Dict[str, Any]]
 
 
 class EditPlanExplanation(TypedDict):
@@ -127,12 +130,22 @@ class CloneTitleCardsOperation:
 
 
 @dataclass(frozen=True)
+class ReplaceTitleTextOperation:
+    """Replace one existing title while preserving its serialized byte length."""
+
+    operation_id: str
+    clip_uid: str
+    old_text: str
+    new_text: str
+
+
+@dataclass(frozen=True)
 class EditPlan:
     """A parsed edit plan whose fields have already passed strict validation."""
 
     schema_version: int
     source_sha256: str
-    operations: Tuple[CloneTitleCardsOperation, ...]
+    operations: Tuple[Union[CloneTitleCardsOperation, ReplaceTitleTextOperation], ...]
     description: Optional[str] = None
 
 
@@ -256,10 +269,14 @@ def _parse_plan(value: Any) -> EditPlan:
     document = _object(value, "edit plan")
     _only_keys(document, ("schema_version", "description", "source", "operations"), "edit plan")
     schema_version = document.get("schema_version")
-    if isinstance(schema_version, bool) or schema_version != EDIT_PLAN_SCHEMA_VERSION:
+    if (
+        isinstance(schema_version, bool)
+        or schema_version not in SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS
+    ):
         raise WfpError(
-            "Unsupported edit-plan schema_version: {0}; expected {1}".format(
-                schema_version, EDIT_PLAN_SCHEMA_VERSION
+            "Unsupported edit-plan schema_version: {0}; expected one of {1}".format(
+                schema_version,
+                ", ".join(str(version) for version in SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS),
             )
         )
     description = document.get("description")
@@ -275,26 +292,42 @@ def _parse_plan(value: Any) -> EditPlan:
     raw_operations = document.get("operations")
     if not isinstance(raw_operations, list) or len(raw_operations) != 1:
         raise WfpError(
-            "Edit-plan schema v1 requires exactly one operation; one clone operation may contain many cards"
+            "Edit plans require exactly one operation"
         )
     raw_operation = _object(raw_operations[0], "operations[0]")
-    _only_keys(raw_operation, ("id", "op", "template", "cards"), "operations[0]")
     operation_name = raw_operation.get("op")
-    if operation_name != "clone_title_cards":
-        raise WfpError("Unsupported edit operation: {0}".format(operation_name))
     operation_id = raw_operation.get("id", "operation-1")
     operation_id = _non_empty_text(operation_id, "operations[0].id")
-    raw_cards = raw_operation.get("cards")
-    if not isinstance(raw_cards, list) or not raw_cards:
-        raise WfpError("operations[0].cards must be a non-empty array")
-    cards = tuple(_parse_card(card, index) for index, card in enumerate(raw_cards))
-    operation = CloneTitleCardsOperation(
-        operation_id=operation_id,
-        template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
-        cards=cards,
-    )
+    if operation_name == "clone_title_cards":
+        _only_keys(raw_operation, ("id", "op", "template", "cards"), "operations[0]")
+        raw_cards = raw_operation.get("cards")
+        if not isinstance(raw_cards, list) or not raw_cards:
+            raise WfpError("operations[0].cards must be a non-empty array")
+        cards = tuple(_parse_card(card, index) for index, card in enumerate(raw_cards))
+        operation: Union[CloneTitleCardsOperation, ReplaceTitleTextOperation]
+        operation = CloneTitleCardsOperation(
+            operation_id=operation_id,
+            template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
+            cards=cards,
+        )
+    elif operation_name == "replace_title_text" and schema_version == 2:
+        _only_keys(raw_operation, ("id", "op", "target", "new_text"), "operations[0]")
+        target = _object(raw_operation.get("target"), "operations[0].target")
+        _only_keys(target, ("clip_uid", "text"), "operations[0].target")
+        operation = ReplaceTitleTextOperation(
+            operation_id=operation_id,
+            clip_uid=_non_empty_text(
+                target.get("clip_uid"), "operations[0].target.clip_uid"
+            ),
+            old_text=_non_empty_text(target.get("text"), "operations[0].target.text"),
+            new_text=_non_empty_text(raw_operation.get("new_text"), "operations[0].new_text"),
+        )
+        if operation.new_text == operation.old_text:
+            raise WfpError("operations[0].new_text must differ from the current text")
+    else:
+        raise WfpError("Unsupported edit operation: {0}".format(operation_name))
     return EditPlan(
-        schema_version=EDIT_PLAN_SCHEMA_VERSION,
+        schema_version=schema_version,
         source_sha256=source_sha256.lower(),
         operations=(operation,),
         description=description,
@@ -304,26 +337,37 @@ def _parse_plan(value: Any) -> EditPlan:
 def _validate_typed_plan(plan: EditPlan) -> EditPlan:
     """Keep manually constructed public dataclasses behind the same safety gate."""
 
-    if isinstance(plan.schema_version, bool) or plan.schema_version != EDIT_PLAN_SCHEMA_VERSION:
+    if (
+        isinstance(plan.schema_version, bool)
+        or plan.schema_version not in SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS
+    ):
         raise WfpError(
-            "Unsupported edit-plan schema_version: {0}; expected {1}".format(
-                plan.schema_version, EDIT_PLAN_SCHEMA_VERSION
+            "Unsupported edit-plan schema_version: {0}; expected one of {1}".format(
+                plan.schema_version,
+                ", ".join(str(version) for version in SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS),
             )
         )
     if not isinstance(plan.source_sha256, str) or not _SHA256_RE.fullmatch(plan.source_sha256):
         raise WfpError("edit plan.source.sha256 must be a 64-character SHA-256 digest")
     if plan.description is not None:
         _non_empty_text(plan.description, "edit plan.description")
-    if (
-        not isinstance(plan.operations, tuple)
-        or len(plan.operations) != 1
-        or not isinstance(plan.operations[0], CloneTitleCardsOperation)
-    ):
-        raise WfpError(
-            "Edit-plan schema v1 requires exactly one clone_title_cards operation"
-        )
+    if not isinstance(plan.operations, tuple) or len(plan.operations) != 1:
+        raise WfpError("Edit plans require exactly one operation")
     operation = plan.operations[0]
+    if not isinstance(operation, (CloneTitleCardsOperation, ReplaceTitleTextOperation)):
+        raise WfpError("Unsupported typed edit operation")
     _non_empty_text(operation.operation_id, "operations[0].id")
+    if isinstance(operation, ReplaceTitleTextOperation):
+        if plan.schema_version != 2:
+            raise WfpError("replace_title_text requires edit-plan schema version 2")
+        _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
+        _non_empty_text(operation.old_text, "operations[0].target.text")
+        _non_empty_text(operation.new_text, "operations[0].new_text")
+        if operation.new_text == operation.old_text:
+            raise WfpError("operations[0].new_text must differ from the current text")
+        return plan
+    if not isinstance(operation, CloneTitleCardsOperation):
+        raise WfpError("Unsupported typed edit operation")
     selector = operation.template
     if not isinstance(selector, TitleCardTemplateSelector):
         raise WfpError("operations[0].template must be a TitleCardTemplateSelector")
@@ -372,7 +416,7 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
 
 
 def load_edit_plan(value: PlanInput) -> EditPlan:
-    """Load and strictly validate a v1 edit plan from a path or mapping."""
+    """Load and strictly validate a supported edit plan from a path or mapping."""
 
     if isinstance(value, EditPlan):
         return _validate_typed_plan(value)
@@ -388,12 +432,15 @@ def load_edit_plan(value: PlanInput) -> EditPlan:
     return _parse_plan(document)
 
 
-def edit_plan_schema() -> Dict[str, Any]:
-    """Return a new dictionary containing the bundled v1 JSON Schema."""
+def edit_plan_schema(version: int = EDIT_PLAN_SCHEMA_VERSION) -> Dict[str, Any]:
+    """Return a new dictionary containing one bundled immutable JSON Schema."""
+
+    if version not in SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS:
+        raise WfpError("Unsupported edit-plan schema version: {0}".format(version))
 
     raw = (
         resources.files("filmora_wfp.schemas")
-        .joinpath("edit-plan-v1.schema.json")
+        .joinpath("edit-plan-v{0}.schema.json".format(version))
         .read_text(encoding="utf-8")
     )
     value = json.loads(raw)
@@ -586,11 +633,44 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
     """List targets currently supported by the declarative edit-plan API."""
 
     source, targets = _title_card_targets(path)
+    title_targets: List[Dict[str, Any]] = []
+    seen_title_targets = set()
+    for title in list_titles(path):
+        clip_uid = title.get("clip_uid")
+        current_text = title.get("text")
+        if not isinstance(clip_uid, str) or not isinstance(current_text, str) or not current_text:
+            continue
+        key = (clip_uid, current_text)
+        if key in seen_title_targets:
+            continue
+        seen_title_targets.add(key)
+        title_targets.append(
+            {
+                "target_type": "existing_title_text",
+                "selector": {"clip_uid": clip_uid, "text": current_text},
+                "timeline_id": title.get("timeline_id"),
+                "track_index": title.get("track_index"),
+                "clip_index": title.get("clip_index"),
+                "font": title.get("font"),
+                "font_size": title.get("font_size"),
+                "scale_x": (title.get("scale") or {}).get("x"),
+                "serialized_length_constraint": "replacement must preserve scriptBuf UTF-8 bytes",
+            }
+        )
+    title_targets.sort(
+        key=lambda target: (
+            target.get("timeline_id") if isinstance(target.get("timeline_id"), int) else -1,
+            target.get("track_index") if isinstance(target.get("track_index"), int) else -1,
+            target.get("clip_index") if isinstance(target.get("clip_index"), int) else -1,
+            target["selector"]["text"],
+        )
+    )
     return {
         "api_version": EDIT_PLAN_API_VERSION,
         "source": source,
-        "supported_operations": ["clone_title_cards"],
+        "supported_operations": ["clone_title_cards", "replace_title_text"],
         "title_card_templates": targets,
+        "title_text_targets": title_targets,
     }
 
 
@@ -617,6 +697,19 @@ def _resolve_template(
         raise WfpError(
             "Title-card template selector is ambiguous; use the current timeline_id selector"
         )
+    return matches[0]
+
+
+def _resolve_title_text(
+    operation: ReplaceTitleTextOperation,
+    targets: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    selector = {"clip_uid": operation.clip_uid, "text": operation.old_text}
+    matches = [target for target in targets if target.get("selector") == selector]
+    if not matches:
+        raise WfpError("Title-text selector did not match the current source project")
+    if len(matches) > 1:
+        raise WfpError("Title-text selector is ambiguous in the current source project")
     return matches[0]
 
 
@@ -652,6 +745,51 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
     if targets_result["source"]["sha256"] != actual_sha256:
         raise WfpError("Source project changed while the edit plan was being explained")
     operation = parsed.operations[0]
+    if isinstance(operation, ReplaceTitleTextOperation):
+        target = _resolve_title_text(operation, targets_result["title_text_targets"])
+        text_preflight = preflight_title_text_replacement(
+            source_path,
+            clip_uid=operation.clip_uid,
+            old_text=operation.old_text,
+            new_text=operation.new_text,
+        )
+        return {
+            "api_version": EDIT_PLAN_API_VERSION,
+            "plan_schema_version": parsed.schema_version,
+            "status": "ready",
+            "writes_performed": False,
+            "description": parsed.description,
+            "source": targets_result["source"],
+            "preflight": {
+                "source_sha256_matches": True,
+                "format_eval_valid": True,
+            },
+            "operations": [
+                {
+                    "id": operation.operation_id,
+                    "op": "replace_title_text",
+                    "requested_target": {
+                        "clip_uid": operation.clip_uid,
+                        "text": operation.old_text,
+                    },
+                    "resolved_target": dict(target),
+                    "new_text": operation.new_text,
+                    "serialized_length_preserved": text_preflight[
+                        "serialized_length_preserved"
+                    ],
+                    "matching_archive_occurrences": text_preflight[
+                        "matching_occurrences"
+                    ],
+                }
+            ],
+            "filmora_round_trip": {
+                "required": True,
+                "performed": False,
+            },
+        }
+
+    if not isinstance(operation, CloneTitleCardsOperation):
+        raise WfpError("Unsupported typed edit operation")
     target = _resolve_template(operation.template, targets_result["title_card_templates"])
     duration_ticks = target.get("duration_ticks")
     if not isinstance(duration_ticks, int) or duration_ticks <= 0:
@@ -711,14 +849,30 @@ def apply_edit_plan(
     parsed = load_edit_plan(plan)
     explanation = explain_edit_plan(source, parsed)
     operation = parsed.operations[0]
-    resolved = explanation["operations"][0]["resolved_template"]
-    writer_result = clone_title_cards(
-        source,
-        output,
-        template_timeline_id=resolved["resolved_timeline_id"],
-        cards=[card.writer_spec() for card in operation.cards],
-        expected_source_sha256=parsed.source_sha256,
-    )
+    if isinstance(operation, ReplaceTitleTextOperation):
+        writer_result = replace_title_text(
+            source,
+            output,
+            clip_uid=operation.clip_uid,
+            old_text=operation.old_text,
+            new_text=operation.new_text,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards: List[Dict[str, Any]] = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, CloneTitleCardsOperation):
+        resolved = explanation["operations"][0]["resolved_template"]
+        writer_result = clone_title_cards(
+            source,
+            output,
+            template_timeline_id=resolved["resolved_timeline_id"],
+            cards=[card.writer_spec() for card in operation.cards],
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = writer_result["created_cards"]
+        audit_valid = bool((writer_result.get("copy_audit") or {}).get("valid"))
+    else:
+        raise WfpError("Unsupported typed edit operation")
     return {
         "api_version": EDIT_PLAN_API_VERSION,
         "plan_schema_version": parsed.schema_version,
@@ -727,11 +881,9 @@ def apply_edit_plan(
         "source": explanation["source"],
         "output": str(output_path),
         "operations": explanation["operations"],
-        "created_cards": writer_result["created_cards"],
+        "created_cards": created_cards,
         "verification": {
-            "source_aware_audit_valid": bool(
-                (writer_result.get("copy_audit") or {}).get("valid")
-            ),
+            "source_aware_audit_valid": audit_valid,
             "filmora_round_trip_required": True,
             "filmora_round_trip_performed": False,
         },

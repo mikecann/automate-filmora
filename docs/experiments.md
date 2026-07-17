@@ -144,14 +144,32 @@ dry-run explanation, application, and the source-aware audit all run without
 opening Filmora. The result keeps `filmora_round_trip_performed` false until an
 application check actually happens.
 
+## Equal-length title replacement acceptance
+
+Filmora 15.6.4.11894 on macOS accepted a generated copy that changed only the
+two mirrored title values inside one type-4 clip's `scriptBuf`. The controlled
+fixture changed `FORMAT MAP TITLX` to `FORMAT MAP TITLY`, preserving the complete
+serialized script byte length. The source-aware audit reported exactly the two
+intended semantic changes and `eval-format` passed.
+
+Filmora opened the generated project and visibly rendered `FORMAT MAP TITLY`.
+It then saved the project to a second new path, the saved copy passed every
+format probe, retained the new text, and reopened successfully. Filmora rotated
+and reordered extensive protected metadata during Save As, so those differences
+remain normalization noise rather than writer requirements.
+
+API version 2 and plan schema version 2 now expose this as
+`replace_title_text`. Schema version 1 remains immutable and supported. The
+operation requires a source hash, exact clip UID, exact old text, and refuses a
+replacement unless the actual serialized `scriptBuf` byte length is unchanged.
+
 The next controlled Filmora batch should evaluate operations in this order:
 
-1. replace existing title text without changing measured geometry;
-2. change an existing source clip's Basic rotation value;
-3. change the duration of an existing linked transition pair;
-4. remove an existing linked transition pair;
-5. move or trim a linked A/V pair;
-6. split a linked A/V pair and verify every regenerated identifier.
+1. change an existing source clip's Basic rotation value;
+2. change the duration of an existing linked transition pair;
+3. remove an existing linked transition pair;
+4. move or trim a linked A/V pair;
+5. split a linked A/V pair and verify every regenerated identifier.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:automate-filmora:edit-plan:v2",
+  "title": "Filmora edit plan v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "operations"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "description": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/cloneTitleCardsOperation"},
+          {"$ref": "#/$defs/replaceTitleTextOperation"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "positiveDecimal": {
+      "oneOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "string", "pattern": "^(?:0*[1-9][0-9]*(?:\\.[0-9]+)?|0*\\.(?:[0-9]*[1-9][0-9]*))$"}
+      ]
+    },
+    "nonNegativeDecimal": {
+      "oneOf": [
+        {"type": "number", "minimum": 0},
+        {"type": "string", "pattern": "^(?:0|[0-9]+(?:\\.[0-9]+)?|0?\\.[0-9]+)$"}
+      ]
+    },
+    "templateSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timeline_id"],
+          "properties": {"timeline_id": {"type": "integer", "minimum": 0}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heading", "subheading"],
+          "properties": {
+            "heading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "subheading": {"type": "string", "minLength": 1, "pattern": "\\S"}
+          }
+        }
+      ]
+    },
+    "position": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ticks"],
+          "properties": {"ticks": {"type": "integer", "minimum": 0}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seconds"],
+          "properties": {"seconds": {"$ref": "#/$defs/nonNegativeDecimal"}}
+        }
+      ]
+    },
+    "titleCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "heading", "subheading", "heading_font_size", "heading_scale_x", "subheading_font_size", "subheading_scale_x"],
+      "properties": {
+        "at": {"$ref": "#/$defs/position"},
+        "heading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "subheading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "heading_font_size": {"$ref": "#/$defs/positiveDecimal"},
+        "heading_scale_x": {"$ref": "#/$defs/positiveDecimal"},
+        "subheading_font_size": {"$ref": "#/$defs/positiveDecimal"},
+        "subheading_scale_x": {"$ref": "#/$defs/positiveDecimal"}
+      }
+    },
+    "cloneTitleCardsOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "template", "cards"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "clone_title_cards"},
+        "template": {"$ref": "#/$defs/templateSelector"},
+        "cards": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/titleCard"}}
+      }
+    },
+    "replaceTitleTextOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_text"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_title_text"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "text"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "text": {"type": "string", "minLength": 1, "pattern": "\\S"}
+          }
+        },
+        "new_text": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    }
+  }
+}

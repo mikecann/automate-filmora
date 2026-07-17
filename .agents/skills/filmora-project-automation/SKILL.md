@@ -129,8 +129,9 @@ controlled experiment and writer acceptance workflow.
 3. Preserve unrelated members and avoid regenerating UUIDs.
 4. Validate JSON, archive paths, and timeline references.
 5. Run `filmora_wfp eval-format` on the generated copy.
-6. Audit the generated copy against its source with
-   `filmora_wfp audit-title-card-copy`.
+6. Run the operation's source-aware audit. Use
+   `filmora_wfp audit-title-card-copy` for compound card clones; title replacement
+   is audited automatically by its writer and edit-plan result.
 7. Compare input/output with `filmora_wfp diff` and semantic `map` output.
 8. Open the output in the originating Filmora build as the final gate.
 9. Save it again in Filmora and confirm the intended change survives. Expect

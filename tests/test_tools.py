@@ -15,6 +15,7 @@ from filmora_wfp import (
     WfpArchive,
     WfpError,
     apply_edit_plan,
+    audit_title_text_copy,
     audit_title_card_copy,
     clone_title_cards,
     discover_projects,
@@ -28,6 +29,7 @@ from filmora_wfp import (
     load_edit_plan,
     map_project,
     project_sha256,
+    replace_title_text,
     survey_projects,
     validate_project,
 )
@@ -81,14 +83,103 @@ def _edit_plan(source: Path, *, seconds: str = "5") -> dict:
     }
 
 
+def _replace_text_plan(source: Path) -> dict:
+    return {
+        "schema_version": 2,
+        "description": "Replace one existing title without changing its serialized length",
+        "source": {"sha256": project_sha256(source)},
+        "operations": [
+            {
+                "id": "rename-template",
+                "op": "replace_title_text",
+                "target": {
+                    "clip_uid": "12000000-0000-4000-8000-000000000002",
+                    "text": "1. Template",
+                },
+                "new_text": "1. Templatf",
+            }
+        ],
+    }
+
+
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_replace_title_text_changes_only_equal_length_mirrors(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            output = root / "output.wfp"
+            source_before = source.read_bytes()
+
+            result = replace_title_text(
+                source,
+                output,
+                clip_uid="12000000-0000-4000-8000-000000000002",
+                old_text="1. Template",
+                new_text="1. Templatf",
+                expected_source_sha256=project_sha256(source),
+            )
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(output.is_file())
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(result["audit"]["details"]["title_occurrences_changed"], 2)
+            self.assertIn("1. Templatf", [title["text"] for title in list_titles(output)])
+            self.assertNotIn("1. Template", [title["text"] for title in list_titles(output)])
+            audit = audit_title_text_copy(
+                source,
+                output,
+                clip_uid="12000000-0000-4000-8000-000000000002",
+                old_text="1. Template",
+                new_text="1. Templatf",
+            )
+            self.assertTrue(audit["valid"], audit)
+
+            with self.assertRaisesRegex(WfpError, "Refusing to overwrite"):
+                replace_title_text(
+                    source,
+                    output,
+                    clip_uid="12000000-0000-4000-8000-000000000002",
+                    old_text="1. Template",
+                    new_text="1. Templatf",
+                )
+
+    def test_replace_title_text_rejects_unsafe_length_and_removes_failed_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            unequal = root / "unequal.wfp"
+            with self.assertRaisesRegex(WfpError, "serialized script length"):
+                replace_title_text(
+                    source,
+                    unequal,
+                    clip_uid="12000000-0000-4000-8000-000000000002",
+                    old_text="1. Template",
+                    new_text="A much longer title",
+                )
+            self.assertFalse(unequal.exists())
+
+            rejected = root / "rejected.wfp"
+            with patch(
+                "filmora_wfp.title_text.audit_title_text_copy",
+                return_value={"valid": False, "errors": ["controlled audit failure"]},
+            ):
+                with self.assertRaisesRegex(WfpError, "controlled audit failure"):
+                    replace_title_text(
+                        source,
+                        rejected,
+                        clip_uid="12000000-0000-4000-8000-000000000002",
+                        old_text="1. Template",
+                        new_text="1. Templatf",
+                    )
+            self.assertFalse(rejected.exists())
+
     def test_edit_targets_and_explain_plan_resolve_current_title_texts(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 1)
+            self.assertEqual(targets["api_version"], 2)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -119,6 +210,14 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     }
                 ],
             )
+            self.assertEqual(len(targets["title_text_targets"]), 2)
+            self.assertEqual(
+                targets["title_text_targets"][0]["selector"],
+                {
+                    "clip_uid": "12000000-0000-4000-8000-000000000002",
+                    "text": "1. Template",
+                },
+            )
 
             result = explain_edit_plan(source, _edit_plan(source))
             self.assertEqual(result["status"], "ready")
@@ -131,12 +230,51 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertTrue(result["filmora_round_trip"]["required"])
             self.assertFalse(result["filmora_round_trip"]["performed"])
 
-            schema = edit_plan_schema()
+            schema = edit_plan_schema(1)
             self.assertEqual(schema["properties"]["schema_version"]["const"], 1)
             self.assertEqual(
                 schema["$defs"]["cloneTitleCardsOperation"]["properties"]["op"]["const"],
                 "clone_title_cards",
             )
+            schema_v2 = edit_plan_schema()
+            self.assertEqual(schema_v2["properties"]["schema_version"]["const"], 2)
+            self.assertEqual(
+                schema_v2["$defs"]["replaceTitleTextOperation"]["properties"]["op"]["const"],
+                "replace_title_text",
+            )
+
+    def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            source_before = source.read_bytes()
+            output = root / "output.wfp"
+            plan = _replace_text_plan(source)
+
+            explanation = explain_edit_plan(source, plan)
+            self.assertEqual(explanation["api_version"], 2)
+            self.assertEqual(explanation["plan_schema_version"], 2)
+            self.assertFalse(explanation["writes_performed"])
+            operation = explanation["operations"][0]
+            self.assertEqual(operation["op"], "replace_title_text")
+            self.assertEqual(operation["new_text"], "1. Templatf")
+            self.assertTrue(operation["serialized_length_preserved"])
+
+            result = apply_edit_plan(source, output, plan)
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(result["verification"]["source_aware_audit_valid"])
+            self.assertFalse(result["verification"]["filmora_round_trip_performed"])
+            self.assertIn("1. Templatf", [title["text"] for title in list_titles(output)])
+
+            unequal = _replace_text_plan(source)
+            unequal["operations"][0]["new_text"] = "A much longer title"
+            with self.assertRaisesRegex(WfpError, "serialized script length"):
+                explain_edit_plan(source, unequal)
+
+            escaped = _replace_text_plan(source)
+            escaped["operations"][0]["new_text"] = '1. Templat"'
+            with self.assertRaisesRegex(WfpError, "serialized script length"):
+                explain_edit_plan(source, escaped)
 
     def test_apply_edit_plan_uses_audited_writer_and_keeps_ui_gate_explicit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -253,7 +391,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 1)
+            self.assertEqual(error["api_version"], 2)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 

@@ -130,7 +130,8 @@ The tools can currently:
 - audit a generated copy against its exact source project;
 - discover current mutation targets and source fingerprints;
 - explain a strict, versioned edit plan without writing;
-- apply the proven title-card operation through the declarative API.
+- apply proven title-card cloning and equal-serialization-length title replacement
+  through the declarative API.
 
 The title-card cloner is deliberately not a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

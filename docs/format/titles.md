@@ -78,9 +78,16 @@ two semantic paths: `Text` and `TextData[0].CharData`. `scriptBufSize`, both sca
 values, and every other field stayed unchanged.
 
 This confirms the two mirrored text fields and byte-size invariant. It does not
-yet prove a safe generic auto-sizing algorithm for arbitrary replacement text.
-The existing compound-card cloner remains the only title writer because its
-callers supply explicit scale and font metrics.
+prove a safe generic auto-sizing algorithm for arbitrary replacement text.
+
+A narrow writer subsequently changed `FORMAT MAP TITLX` to
+`FORMAT MAP TITLY`, preserving the complete serialized `scriptBuf` byte length
+and changing only those two mirrored paths. Filmora 15.6.4.11894 opened the
+generated project, visibly rendered the new text, saved it to another new path,
+and reopened the Filmora-saved copy. That operation is available as edit-plan
+schema v2 `replace_title_text`. It deliberately refuses replacements that would
+change serialized length; the compound-card cloner remains the option for new
+text with caller-supplied scale and font metrics.
 
 ## Observed sizing relationships
 

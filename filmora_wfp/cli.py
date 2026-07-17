@@ -298,12 +298,33 @@ def _print_edit_targets(result: Dict[str, Any]) -> None:
                 selector.get("subheading"),
             )
         )
+    title_targets = result.get("title_text_targets") or []
+    print("Replaceable existing titles: {0}".format(len(title_targets)))
+    for target in title_targets:
+        selector = target.get("selector") or {}
+        print(
+            '  {0}: "{1}"'.format(
+                selector.get("clip_uid"),
+                selector.get("text"),
+            )
+        )
 
 
 def _print_plan_explanation(result: Dict[str, Any]) -> None:
     print("EDIT PLAN READY" if result.get("status") == "ready" else "EDIT PLAN NOT READY")
     print("Writes performed: {0}".format(str(bool(result.get("writes_performed"))).lower()))
     for operation in result.get("operations") or []:
+        if operation.get("op") == "replace_title_text":
+            target = operation.get("resolved_target") or {}
+            selector = target.get("selector") or {}
+            print(
+                '{0}: "{1}" -> "{2}"'.format(
+                    operation.get("op"),
+                    selector.get("text"),
+                    operation.get("new_text"),
+                )
+            )
+            continue
         target = operation.get("resolved_template") or {}
         print(
             "{0}: {1} card(s) from current timeline {2}".format(
@@ -326,7 +347,11 @@ def _print_plan_explanation(result: Dict[str, Any]) -> None:
 def _print_plan_application(result: Dict[str, Any]) -> None:
     print("EDIT PLAN APPLIED")
     print(result.get("output"))
-    print("Created title cards: {0}".format(len(result.get("created_cards") or [])))
+    operations = result.get("operations") or []
+    if operations and operations[0].get("op") == "replace_title_text":
+        print("Replaced title text: yes")
+    else:
+        print("Created title cards: {0}".format(len(result.get("created_cards") or [])))
     verification = result.get("verification") or {}
     print(
         "Source-aware audit: {0}".format(
