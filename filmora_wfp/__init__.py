@@ -17,6 +17,9 @@ from .edit_plan import (
     TitleCardSpec,
     TitleCardTemplateSelector,
     ReplaceTitleTextOperation,
+    ReplaceClipRotationOperation,
+    ReplaceLinkedTransitionDurationOperation,
+    RemoveLinkedTransitionOperation,
     apply_edit_plan,
     edit_plan_schema,
     explain_edit_plan,
@@ -52,6 +55,9 @@ __all__ = [
     "EDIT_PLAN_SCHEMA_VERSION",
     "CloneTitleCardsOperation",
     "ReplaceTitleTextOperation",
+    "ReplaceClipRotationOperation",
+    "ReplaceLinkedTransitionDurationOperation",
+    "RemoveLinkedTransitionOperation",
     "EditPlan",
     "EditPlanApplicationResult",
     "EditPlanExplanation",
@@ -89,4 +95,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

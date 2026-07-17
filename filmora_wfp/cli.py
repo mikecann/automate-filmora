@@ -308,6 +308,26 @@ def _print_edit_targets(result: Dict[str, Any]) -> None:
                 selector.get("text"),
             )
         )
+    rotation_targets = result.get("rotation_targets") or []
+    print("Replaceable clip rotations: {0}".format(len(rotation_targets)))
+    for target in rotation_targets:
+        selector = target.get("selector") or {}
+        print(
+            "  {0}: {1} degrees".format(
+                selector.get("clip_uid"), selector.get("rotation")
+            )
+        )
+    transition_targets = result.get("linked_transition_targets") or []
+    print("Replaceable linked Dissolves: {0}".format(len(transition_targets)))
+    for target in transition_targets:
+        selector = target.get("selector") or {}
+        print(
+            "  {0} + {1}: {2} ticks".format(
+                selector.get("video_clip_uid"),
+                selector.get("audio_clip_uid"),
+                selector.get("duration_ticks"),
+            )
+        )
 
 
 def _print_plan_explanation(result: Dict[str, Any]) -> None:
@@ -322,6 +342,30 @@ def _print_plan_explanation(result: Dict[str, Any]) -> None:
                     operation.get("op"),
                     selector.get("text"),
                     operation.get("new_text"),
+                )
+            )
+            continue
+        if operation.get("op") == "replace_clip_rotation":
+            selector = operation.get("requested_target") or {}
+            print(
+                "replace_clip_rotation: {0} -> {1}".format(
+                    selector.get("rotation"), operation.get("new_rotation")
+                )
+            )
+            continue
+        if operation.get("op") in (
+            "replace_linked_transition_duration",
+            "remove_linked_transition",
+        ):
+            selector = operation.get("requested_target") or {}
+            suffix = (
+                " -> {0} ticks".format(operation.get("new_duration_ticks"))
+                if operation.get("op") == "replace_linked_transition_duration"
+                else " -> removed"
+            )
+            print(
+                "{0}: {1} ticks{2}".format(
+                    operation.get("op"), selector.get("duration_ticks"), suffix
                 )
             )
             continue
@@ -348,8 +392,8 @@ def _print_plan_application(result: Dict[str, Any]) -> None:
     print("EDIT PLAN APPLIED")
     print(result.get("output"))
     operations = result.get("operations") or []
-    if operations and operations[0].get("op") == "replace_title_text":
-        print("Replaced title text: yes")
+    if operations and operations[0].get("op") != "clone_title_cards":
+        print("Applied operation: {0}".format(operations[0].get("op")))
     else:
         print("Created title cards: {0}".format(len(result.get("created_cards") or [])))
     verification = result.get("verification") or {}

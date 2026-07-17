@@ -1,13 +1,15 @@
 # Declarative edit-plan API
 
-Status: API version `2`, latest plan schema version `2`. Schema version `1`
-remains supported unchanged. This is a strict orchestration
+Status: API version `3`, latest plan schema version `3`. Schema versions `1` and
+`2` remain supported unchanged. This is a strict orchestration
 layer over mutations that have already passed a Filmora load, save, and reopen
 experiment. It is not a generic JSON patcher.
 
 Schema version 1 supports `clone_title_cards`. Schema version 2 adds
-`replace_title_text` and retains the clone operation. A plan contains exactly one
-operation, although one clone operation can create many cards. Unsupported
+`replace_title_text`. Schema version 3 retains both and adds
+`replace_clip_rotation`, `replace_linked_transition_duration`, and
+`remove_linked_transition`. A plan contains exactly one operation, although one
+clone operation can create many cards. Unsupported
 operation names, unknown fields, stale projects, and lossy values are rejected
 before an output file is created.
 
@@ -16,11 +18,15 @@ before an output file is created.
 - Plans require the byte-level SHA-256 of the exact source project.
 - `explain-plan` runs source validation and format probes without writing.
 - `apply-plan` accepts a `.wfp` source and writes only to a new output path.
-- The existing title-card writer still performs the mutation and source-aware
+- The operation-specific writer still performs the mutation and source-aware
   audit. A failed audit removes the generated output.
 - Title replacement requires the discovered clip UID and exact old text, updates
   both serialized text mirrors, and refuses any replacement that changes the
   actual UTF-8 byte length of `scriptBuf`.
+- Rotation replacement requires an already-present single `Rotation` parameter
+  on the exact discovered visual clip.
+- Transition operations require the exact observed linked Dissolve/audio-fade
+  IDs, matched clip and transition bounds, and both discovered owner UIDs.
 - A generated project still requires a Filmora open, save, and reopen check.
 - `.wfpbundle` remains read-only because writing its embedded project would also
   require a tested bundle-repacking policy.
@@ -43,6 +49,10 @@ plan. It does not claim those values will auto-fit different text.
 Existing titles are also returned under `title_text_targets`. These selectors use
 both `clip_uid` and current visible `text`. UIDs can change after Filmora Save As,
 so always rediscover targets and use the SHA-256 from the same response.
+
+Existing supported rotations appear under `rotation_targets`. Exact linked
+Dissolve/audio-fade pairs appear under `linked_transition_targets`. These lists
+deliberately omit structurally ambiguous or unsupported effects and transitions.
 
 Create a plan such as `work/add-cards.json`:
 
@@ -144,12 +154,47 @@ To replace one existing title, use schema version 2 and a selector copied from
 This operation deliberately does not auto-fit text. The replacement must keep
 the complete serialized title script the same byte length.
 
+Schema version 3 uses a selector returned by `rotation_targets` like this:
+
+```json
+{
+  "schema_version": 3,
+  "source": {"sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+  "operations": [{
+    "op": "replace_clip_rotation",
+    "target": {"clip_uid": "video-clip-uid", "rotation": "10.0"},
+    "new_rotation": "20.0"
+  }]
+}
+```
+
+A discovered linked pair can either change duration or be removed:
+
+```json
+{
+  "schema_version": 3,
+  "source": {"sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+  "operations": [{
+    "op": "replace_linked_transition_duration",
+    "target": {
+      "video_clip_uid": "video-clip-uid",
+      "audio_clip_uid": "audio-clip-uid",
+      "duration_ticks": 20000000
+    },
+    "new_duration_ticks": 10000000
+  }]
+}
+```
+
+Use the same target with `"op": "remove_linked_transition"` and omit
+`new_duration_ticks` to remove the pair. Transition insertion remains unsupported.
+
 Successful edit-plan commands exit with code `0`. A rejected plan exits with code
 `2`. With `--json`, the error is emitted to stderr as a versioned object:
 
 ```json
 {
-  "api_version": 2,
+  "api_version": 3,
   "error": {
     "code": "wfp_error",
     "message": "Source fingerprint changed: ..."
@@ -169,8 +214,9 @@ from filmora_wfp import (
 )
 
 targets = list_edit_targets("project.wfp")
-schema = edit_plan_schema()  # latest, currently v2
+schema = edit_plan_schema()  # latest, currently v3
 schema_v1 = edit_plan_schema(1)
+schema_v2 = edit_plan_schema(2)
 plan = load_edit_plan("work/add-cards.json")
 dry_run = explain_edit_plan("project.wfp", plan)
 
@@ -181,6 +227,8 @@ assert result["verification"]["source_aware_audit_valid"] is True
 
 Typed immutable input models are also exported: `EditPlan`,
 `CloneTitleCardsOperation`, `ReplaceTitleTextOperation`,
+`ReplaceClipRotationOperation`, `ReplaceLinkedTransitionDurationOperation`,
+`RemoveLinkedTransitionOperation`,
 `TitleCardTemplateSelector`, and `TitleCardSpec`.
 Manually constructed models pass through the same runtime safety validation as
 JSON plans.
@@ -195,8 +243,9 @@ existing result field requires a new API version.
 
 The immutable machine-readable schemas are
 [`edit-plan-v1.schema.json`](../filmora_wfp/schemas/edit-plan-v1.schema.json) and
-[`edit-plan-v2.schema.json`](../filmora_wfp/schemas/edit-plan-v2.schema.json).
-Both are included in the installed wheel.
+[`edit-plan-v2.schema.json`](../filmora_wfp/schemas/edit-plan-v2.schema.json), and
+[`edit-plan-v3.schema.json`](../filmora_wfp/schemas/edit-plan-v3.schema.json).
+All are included in the installed wheel.
 
 ## Adding another operation
 

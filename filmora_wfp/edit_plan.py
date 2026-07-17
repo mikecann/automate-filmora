@@ -15,15 +15,24 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, TypedDic
 from .analysis import WFP_TICKS_PER_SECOND, list_titles
 from .archive import WfpArchive, WfpError
 from .evals import evaluate_project
+from .rotation import preflight_clip_rotation, replace_clip_rotation
 from .title_cards import clone_title_cards
 from .title_text import preflight_title_text_replacement, replace_title_text
+from .transitions import (
+    preflight_linked_transition,
+    remove_linked_transition,
+    replace_linked_transition_duration,
+)
 
 
-EDIT_PLAN_SCHEMA_VERSION = 2
-EDIT_PLAN_API_VERSION = 2
-SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2)
+EDIT_PLAN_SCHEMA_VERSION = 3
+EDIT_PLAN_API_VERSION = 3
+SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3)
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _PLAIN_DECIMAL_RE = re.compile(r"^(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
+_SIGNED_DECIMAL_RE = re.compile(r"^-?(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
+_VIDEO_TRANSITION_ID = "2981D185-D52E-44f4-ABD5-3CE83890E32E"
+_AUDIO_TRANSITION_ID = "audio/blender/transition-fade"
 
 Pathish = Union[os.PathLike[str], str]
 PlanInput = Union["EditPlan", Mapping[str, Any], Pathish]
@@ -42,6 +51,8 @@ class EditTargetsResult(TypedDict):
     supported_operations: List[str]
     title_card_templates: List[Dict[str, Any]]
     title_text_targets: List[Dict[str, Any]]
+    rotation_targets: List[Dict[str, Any]]
+    linked_transition_targets: List[Dict[str, Any]]
 
 
 class EditPlanExplanation(TypedDict):
@@ -140,12 +151,52 @@ class ReplaceTitleTextOperation:
 
 
 @dataclass(frozen=True)
+class ReplaceClipRotationOperation:
+    """Replace one existing visual clip Rotation parameter."""
+
+    operation_id: str
+    clip_uid: str
+    old_rotation: Decimal
+    new_rotation: Decimal
+
+
+@dataclass(frozen=True)
+class ReplaceLinkedTransitionDurationOperation:
+    """Replace the duration of one observed linked transition pair."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    old_duration_ticks: int
+    new_duration_ticks: int
+
+
+@dataclass(frozen=True)
+class RemoveLinkedTransitionOperation:
+    """Remove one observed linked transition pair."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    expected_duration_ticks: int
+
+
+EditOperation = Union[
+    CloneTitleCardsOperation,
+    ReplaceTitleTextOperation,
+    ReplaceClipRotationOperation,
+    ReplaceLinkedTransitionDurationOperation,
+    RemoveLinkedTransitionOperation,
+]
+
+
+@dataclass(frozen=True)
 class EditPlan:
     """A parsed edit plan whose fields have already passed strict validation."""
 
     schema_version: int
     source_sha256: str
-    operations: Tuple[Union[CloneTitleCardsOperation, ReplaceTitleTextOperation], ...]
+    operations: Tuple[EditOperation, ...]
     description: Optional[str] = None
 
 
@@ -179,6 +230,26 @@ def _positive_decimal(value: Any, label: str) -> Decimal:
     if not result.is_finite() or result <= 0:
         raise WfpError("{0} must be a positive decimal number".format(label))
     return result
+
+
+def _finite_decimal(value: Any, label: str) -> Decimal:
+    if isinstance(value, bool) or not isinstance(value, (int, float, str, Decimal)):
+        raise WfpError("{0} must be a finite decimal number".format(label))
+    if isinstance(value, str) and not _SIGNED_DECIMAL_RE.fullmatch(value):
+        raise WfpError("{0} must be a finite decimal number".format(label))
+    try:
+        result = Decimal(str(value))
+    except InvalidOperation as exc:
+        raise WfpError("{0} must be a finite decimal number".format(label)) from exc
+    if not result.is_finite():
+        raise WfpError("{0} must be a finite decimal number".format(label))
+    return result
+
+
+def _positive_ticks(value: Any, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise WfpError("{0} must be a positive integer tick count".format(label))
+    return value
 
 
 def _parse_position(value: Any, label: str) -> Tuple[int, str, Union[int, str]]:
@@ -304,13 +375,12 @@ def _parse_plan(value: Any) -> EditPlan:
         if not isinstance(raw_cards, list) or not raw_cards:
             raise WfpError("operations[0].cards must be a non-empty array")
         cards = tuple(_parse_card(card, index) for index, card in enumerate(raw_cards))
-        operation: Union[CloneTitleCardsOperation, ReplaceTitleTextOperation]
-        operation = CloneTitleCardsOperation(
+        operation: EditOperation = CloneTitleCardsOperation(
             operation_id=operation_id,
             template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
             cards=cards,
         )
-    elif operation_name == "replace_title_text" and schema_version == 2:
+    elif operation_name == "replace_title_text" and schema_version in (2, 3):
         _only_keys(raw_operation, ("id", "op", "target", "new_text"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "text"), "operations[0].target")
@@ -324,6 +394,72 @@ def _parse_plan(value: Any) -> EditPlan:
         )
         if operation.new_text == operation.old_text:
             raise WfpError("operations[0].new_text must differ from the current text")
+    elif operation_name == "replace_clip_rotation" and schema_version == 3:
+        _only_keys(raw_operation, ("id", "op", "target", "new_rotation"), "operations[0]")
+        target = _object(raw_operation.get("target"), "operations[0].target")
+        _only_keys(target, ("clip_uid", "rotation"), "operations[0].target")
+        operation = ReplaceClipRotationOperation(
+            operation_id=operation_id,
+            clip_uid=_non_empty_text(
+                target.get("clip_uid"), "operations[0].target.clip_uid"
+            ),
+            old_rotation=_finite_decimal(
+                target.get("rotation"), "operations[0].target.rotation"
+            ),
+            new_rotation=_finite_decimal(
+                raw_operation.get("new_rotation"), "operations[0].new_rotation"
+            ),
+        )
+        if operation.new_rotation == operation.old_rotation:
+            raise WfpError("operations[0].new_rotation must differ from the current rotation")
+    elif operation_name in (
+        "replace_linked_transition_duration",
+        "remove_linked_transition",
+    ) and schema_version == 3:
+        allowed = (
+            ("id", "op", "target", "new_duration_ticks")
+            if operation_name == "replace_linked_transition_duration"
+            else ("id", "op", "target")
+        )
+        _only_keys(raw_operation, allowed, "operations[0]")
+        target = _object(raw_operation.get("target"), "operations[0].target")
+        _only_keys(
+            target,
+            ("video_clip_uid", "audio_clip_uid", "duration_ticks"),
+            "operations[0].target",
+        )
+        video_clip_uid = _non_empty_text(
+            target.get("video_clip_uid"), "operations[0].target.video_clip_uid"
+        )
+        audio_clip_uid = _non_empty_text(
+            target.get("audio_clip_uid"), "operations[0].target.audio_clip_uid"
+        )
+        duration_ticks = _positive_ticks(
+            target.get("duration_ticks"), "operations[0].target.duration_ticks"
+        )
+        if operation_name == "replace_linked_transition_duration":
+            new_duration_ticks = _positive_ticks(
+                raw_operation.get("new_duration_ticks"),
+                "operations[0].new_duration_ticks",
+            )
+            if new_duration_ticks == duration_ticks:
+                raise WfpError(
+                    "operations[0].new_duration_ticks must differ from the current duration"
+                )
+            operation = ReplaceLinkedTransitionDurationOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                old_duration_ticks=duration_ticks,
+                new_duration_ticks=new_duration_ticks,
+            )
+        else:
+            operation = RemoveLinkedTransitionOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                expected_duration_ticks=duration_ticks,
+            )
     else:
         raise WfpError("Unsupported edit operation: {0}".format(operation_name))
     return EditPlan(
@@ -354,17 +490,61 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
     if not isinstance(plan.operations, tuple) or len(plan.operations) != 1:
         raise WfpError("Edit plans require exactly one operation")
     operation = plan.operations[0]
-    if not isinstance(operation, (CloneTitleCardsOperation, ReplaceTitleTextOperation)):
+    if not isinstance(
+        operation,
+        (
+            CloneTitleCardsOperation,
+            ReplaceTitleTextOperation,
+            ReplaceClipRotationOperation,
+            ReplaceLinkedTransitionDurationOperation,
+            RemoveLinkedTransitionOperation,
+        ),
+    ):
         raise WfpError("Unsupported typed edit operation")
     _non_empty_text(operation.operation_id, "operations[0].id")
     if isinstance(operation, ReplaceTitleTextOperation):
-        if plan.schema_version != 2:
-            raise WfpError("replace_title_text requires edit-plan schema version 2")
+        if plan.schema_version not in (2, 3):
+            raise WfpError("replace_title_text requires edit-plan schema version 2 or 3")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         _non_empty_text(operation.old_text, "operations[0].target.text")
         _non_empty_text(operation.new_text, "operations[0].new_text")
         if operation.new_text == operation.old_text:
             raise WfpError("operations[0].new_text must differ from the current text")
+        return plan
+    if isinstance(operation, ReplaceClipRotationOperation):
+        if plan.schema_version != 3:
+            raise WfpError("replace_clip_rotation requires edit-plan schema version 3")
+        _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
+        old_rotation = _finite_decimal(
+            operation.old_rotation, "operations[0].target.rotation"
+        )
+        new_rotation = _finite_decimal(operation.new_rotation, "operations[0].new_rotation")
+        if old_rotation == new_rotation:
+            raise WfpError("operations[0].new_rotation must differ from the current rotation")
+        return plan
+    if isinstance(
+        operation,
+        (ReplaceLinkedTransitionDurationOperation, RemoveLinkedTransitionOperation),
+    ):
+        if plan.schema_version != 3:
+            raise WfpError("Linked transition operations require edit-plan schema version 3")
+        _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
+        _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
+        if isinstance(operation, ReplaceLinkedTransitionDurationOperation):
+            old_duration = _positive_ticks(
+                operation.old_duration_ticks, "operations[0].target.duration_ticks"
+            )
+            new_duration = _positive_ticks(
+                operation.new_duration_ticks, "operations[0].new_duration_ticks"
+            )
+            if old_duration == new_duration:
+                raise WfpError(
+                    "operations[0].new_duration_ticks must differ from the current duration"
+                )
+        else:
+            _positive_ticks(
+                operation.expected_duration_ticks, "operations[0].target.duration_ticks"
+            )
         return plan
     if not isinstance(operation, CloneTitleCardsOperation):
         raise WfpError("Unsupported typed edit operation")
@@ -629,6 +809,160 @@ def _title_card_targets(path: Pathish) -> Tuple[EditPlanSource, List[Dict[str, A
         return source, targets
 
 
+def _existing_effect_targets(
+    path: Pathish,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Discover only exact structures accepted by the rotation/transition writers."""
+
+    rotation_targets: List[Dict[str, Any]] = []
+    transition_targets: List[Dict[str, Any]] = []
+    seen_rotations = set()
+    seen_transitions = set()
+    with WfpArchive(path) as archive:
+        for _member, document in archive.timeline_documents():
+            timelines = document.get("timelineInfos")
+            if not isinstance(timelines, list):
+                continue
+            for timeline_index, timeline in enumerate(timelines):
+                if not isinstance(timeline, Mapping):
+                    continue
+                timeline_id = timeline.get("timelineId")
+                tracks = timeline.get("trackInfos")
+                if not isinstance(tracks, list):
+                    continue
+                videos: Dict[Tuple[Any, ...], List[Tuple[int, int, Mapping[str, Any]]]] = {}
+                audios: Dict[Tuple[Any, ...], List[Tuple[int, int, Mapping[str, Any]]]] = {}
+                for track_index, track in enumerate(tracks):
+                    if not isinstance(track, Mapping) or not isinstance(track.get("clipList"), list):
+                        continue
+                    track_type = track.get("trackType")
+                    for clip_index, clip in enumerate(track["clipList"]):
+                        if not isinstance(clip, Mapping):
+                            continue
+                        clip_uid = clip.get("thisUId")
+                        if track_type == 1 and clip.get("type") == 1 and isinstance(clip_uid, str):
+                            values: List[Decimal] = []
+                            chains = clip.get("effectChainList")
+                            if isinstance(chains, list):
+                                for chain in chains:
+                                    if not isinstance(chain, Mapping) or not isinstance(
+                                        chain.get("effectList"), list
+                                    ):
+                                        continue
+                                    for effect in chain["effectList"]:
+                                        if (
+                                            not isinstance(effect, Mapping)
+                                            or effect.get("id") != "video/effect/transform"
+                                            or not isinstance(effect.get("paramList"), list)
+                                        ):
+                                            continue
+                                        for parameter in effect["paramList"]:
+                                            fx_param = (
+                                                parameter.get("fxParam")
+                                                if isinstance(parameter, Mapping)
+                                                else None
+                                            )
+                                            if (
+                                                isinstance(parameter, Mapping)
+                                                and parameter.get("name") == "Rotation"
+                                                and isinstance(fx_param, Mapping)
+                                                and "unValue" in fx_param
+                                            ):
+                                                try:
+                                                    values.append(
+                                                        _finite_decimal(
+                                                            fx_param["unValue"], "Rotation"
+                                                        )
+                                                    )
+                                                except WfpError:
+                                                    pass
+                            if len(values) == 1:
+                                key = (clip_uid, values[0])
+                                if key not in seen_rotations:
+                                    seen_rotations.add(key)
+                                    rotation_targets.append(
+                                        {
+                                            "target_type": "existing_clip_rotation",
+                                            "selector": {
+                                                "clip_uid": clip_uid,
+                                                "rotation": str(values[0]),
+                                            },
+                                            "timeline_id": timeline_id,
+                                            "timeline_index": timeline_index,
+                                            "track_index": track_index,
+                                            "clip_index": clip_index,
+                                        }
+                                    )
+
+                        transition = clip.get("postTransition")
+                        if not isinstance(transition, Mapping):
+                            continue
+                        transition_id = transition.get("id")
+                        if transition_id not in (_VIDEO_TRANSITION_ID, _AUDIO_TRANSITION_ID):
+                            continue
+                        bounds = (
+                            transition.get("tlBegin"),
+                            transition.get("tlEnd"),
+                            clip.get("tlBegin"),
+                            clip.get("tlEnd"),
+                        )
+                        if not all(isinstance(value, int) for value in bounds):
+                            continue
+                        if bounds[1] <= bounds[0] or bounds[1] != bounds[3] or bounds[0] < bounds[2]:
+                            continue
+                        entry = (track_index, clip_index, clip)
+                        if (
+                            track_type == 1
+                            and clip.get("type") == 1
+                            and transition_id == _VIDEO_TRANSITION_ID
+                        ):
+                            videos.setdefault(bounds, []).append(entry)
+                        elif (
+                            track_type == 2
+                            and clip.get("type") == 2
+                            and transition_id == _AUDIO_TRANSITION_ID
+                        ):
+                            audios.setdefault(bounds, []).append(entry)
+
+                for bounds in sorted(set(videos) & set(audios)):
+                    if len(videos[bounds]) != 1 or len(audios[bounds]) != 1:
+                        continue
+                    video_track, video_index, video = videos[bounds][0]
+                    audio_track, audio_index, audio = audios[bounds][0]
+                    video_uid = video.get("thisUId")
+                    audio_uid = audio.get("thisUId")
+                    if not isinstance(video_uid, str) or not isinstance(audio_uid, str):
+                        continue
+                    duration = bounds[1] - bounds[0]
+                    key = (video_uid, audio_uid, duration)
+                    if key in seen_transitions:
+                        continue
+                    seen_transitions.add(key)
+                    transition_targets.append(
+                        {
+                            "target_type": "existing_linked_dissolve_audio_fade",
+                            "selector": {
+                                "video_clip_uid": video_uid,
+                                "audio_clip_uid": audio_uid,
+                                "duration_ticks": duration,
+                            },
+                            "timeline_id": timeline_id,
+                            "timeline_index": timeline_index,
+                            "video_track_index": video_track,
+                            "video_clip_index": video_index,
+                            "audio_track_index": audio_track,
+                            "audio_clip_index": audio_index,
+                            "tl_begin": bounds[0],
+                            "tl_end": bounds[1],
+                        }
+                    )
+    rotation_targets.sort(key=lambda target: tuple(str(value) for value in target["selector"].values()))
+    transition_targets.sort(
+        key=lambda target: tuple(str(value) for value in target["selector"].values())
+    )
+    return rotation_targets, transition_targets
+
+
 def list_edit_targets(path: Pathish) -> EditTargetsResult:
     """List targets currently supported by the declarative edit-plan API."""
 
@@ -665,12 +999,23 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
             target["selector"]["text"],
         )
     )
+    rotation_targets, transition_targets = _existing_effect_targets(path)
+    if project_sha256(path) != source["sha256"]:
+        raise WfpError("Source project changed while edit targets were being discovered")
     return {
         "api_version": EDIT_PLAN_API_VERSION,
         "source": source,
-        "supported_operations": ["clone_title_cards", "replace_title_text"],
+        "supported_operations": [
+            "clone_title_cards",
+            "replace_title_text",
+            "replace_clip_rotation",
+            "replace_linked_transition_duration",
+            "remove_linked_transition",
+        ],
         "title_card_templates": targets,
         "title_text_targets": title_targets,
+        "rotation_targets": rotation_targets,
+        "linked_transition_targets": transition_targets,
     }
 
 
@@ -710,6 +1055,19 @@ def _resolve_title_text(
         raise WfpError("Title-text selector did not match the current source project")
     if len(matches) > 1:
         raise WfpError("Title-text selector is ambiguous in the current source project")
+    return matches[0]
+
+
+def _resolve_exact_selector(
+    selector: Mapping[str, Any],
+    targets: Sequence[Mapping[str, Any]],
+    label: str,
+) -> Mapping[str, Any]:
+    matches = [target for target in targets if target.get("selector") == selector]
+    if not matches:
+        raise WfpError("{0} selector did not match the current source project".format(label))
+    if len(matches) > 1:
+        raise WfpError("{0} selector is ambiguous in the current source project".format(label))
     return matches[0]
 
 
@@ -788,6 +1146,99 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
             },
         }
 
+    if isinstance(operation, ReplaceClipRotationOperation):
+        selector = {
+            "clip_uid": operation.clip_uid,
+            "rotation": str(operation.old_rotation),
+        }
+        target = _resolve_exact_selector(
+            selector, targets_result["rotation_targets"], "Rotation"
+        )
+        rotation_preflight = preflight_clip_rotation(
+            source_path,
+            clip_uid=operation.clip_uid,
+            old_rotation=operation.old_rotation,
+            new_rotation=operation.new_rotation,
+        )
+        return {
+            "api_version": EDIT_PLAN_API_VERSION,
+            "plan_schema_version": parsed.schema_version,
+            "status": "ready",
+            "writes_performed": False,
+            "description": parsed.description,
+            "source": targets_result["source"],
+            "preflight": {"source_sha256_matches": True, "format_eval_valid": True},
+            "operations": [
+                {
+                    "id": operation.operation_id,
+                    "op": "replace_clip_rotation",
+                    "requested_target": selector,
+                    "resolved_target": dict(target),
+                    "new_rotation": str(operation.new_rotation),
+                    "matching_archive_occurrences": rotation_preflight[
+                        "matching_archive_occurrences"
+                    ],
+                }
+            ],
+            "filmora_round_trip": {"required": True, "performed": False},
+        }
+
+    if isinstance(
+        operation,
+        (ReplaceLinkedTransitionDurationOperation, RemoveLinkedTransitionOperation),
+    ):
+        old_duration = (
+            operation.old_duration_ticks
+            if isinstance(operation, ReplaceLinkedTransitionDurationOperation)
+            else operation.expected_duration_ticks
+        )
+        selector = {
+            "video_clip_uid": operation.video_clip_uid,
+            "audio_clip_uid": operation.audio_clip_uid,
+            "duration_ticks": old_duration,
+        }
+        target = _resolve_exact_selector(
+            selector,
+            targets_result["linked_transition_targets"],
+            "Linked transition",
+        )
+        transition_preflight = preflight_linked_transition(
+            source_path,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            expected_duration_ticks=old_duration,
+        )
+        operation_result: Dict[str, Any] = {
+            "id": operation.operation_id,
+            "op": (
+                "replace_linked_transition_duration"
+                if isinstance(operation, ReplaceLinkedTransitionDurationOperation)
+                else "remove_linked_transition"
+            ),
+            "requested_target": selector,
+            "resolved_target": dict(target),
+            "matching_archive_occurrences": transition_preflight[
+                "matching_archive_occurrences"
+            ],
+        }
+        if isinstance(operation, ReplaceLinkedTransitionDurationOperation):
+            resolved_begin = transition_preflight["tl_end"] - operation.new_duration_ticks
+            if resolved_begin < transition_preflight["owner_tl_begin"]:
+                raise WfpError("Requested transition duration begins before its linked clips")
+            operation_result["new_duration_ticks"] = operation.new_duration_ticks
+            operation_result["resolved_new_tl_begin"] = resolved_begin
+        return {
+            "api_version": EDIT_PLAN_API_VERSION,
+            "plan_schema_version": parsed.schema_version,
+            "status": "ready",
+            "writes_performed": False,
+            "description": parsed.description,
+            "source": targets_result["source"],
+            "preflight": {"source_sha256_matches": True, "format_eval_valid": True},
+            "operations": [operation_result],
+            "filmora_round_trip": {"required": True, "performed": False},
+        }
+
     if not isinstance(operation, CloneTitleCardsOperation):
         raise WfpError("Unsupported typed edit operation")
     target = _resolve_template(operation.template, targets_result["title_card_templates"])
@@ -859,6 +1310,40 @@ def apply_edit_plan(
             expected_source_sha256=parsed.source_sha256,
         )
         created_cards: List[Dict[str, Any]] = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, ReplaceClipRotationOperation):
+        writer_result = replace_clip_rotation(
+            source,
+            output,
+            clip_uid=operation.clip_uid,
+            old_rotation=operation.old_rotation,
+            new_rotation=operation.new_rotation,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, ReplaceLinkedTransitionDurationOperation):
+        writer_result = replace_linked_transition_duration(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            old_duration_ticks=operation.old_duration_ticks,
+            new_duration_ticks=operation.new_duration_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, RemoveLinkedTransitionOperation):
+        writer_result = remove_linked_transition(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            expected_duration_ticks=operation.expected_duration_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
         audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
     elif isinstance(operation, CloneTitleCardsOperation):
         resolved = explanation["operations"][0]["resolved_template"]

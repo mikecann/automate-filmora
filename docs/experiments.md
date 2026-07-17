@@ -190,6 +190,10 @@ removal copy contained none, both passed `eval-format`, and both reopened. The
 writers remain restricted to the exact observed visual Dissolve and linked audio
 fade IDs, matching type-1/type-2 owner clips, and an existing end-contained pair.
 
+API version 3 and plan schema version 3 expose the accepted rotation and linked
+transition operations with selectors discovered from the current source. Earlier
+published schemas remain unchanged and supported.
+
 The next controlled Filmora batch should evaluate operations in this order:
 
 1. move or trim a linked A/V pair;

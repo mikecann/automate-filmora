@@ -130,8 +130,9 @@ The tools can currently:
 - audit a generated copy against its exact source project;
 - discover current mutation targets and source fingerprints;
 - explain a strict, versioned edit plan without writing;
-- apply proven title-card cloning and equal-serialization-length title replacement
-  through the declarative API.
+- apply proven title-card cloning, equal-serialization-length title replacement,
+  existing Rotation replacement, and the exact linked transition operations
+  through declarative edit-plan API version 3;
 - replace one already-present video-clip Rotation value with a source-aware audit;
 - change or remove one already-present linked Dissolve/audio-fade pair with a
   source-aware audit.

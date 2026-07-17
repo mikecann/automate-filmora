@@ -106,6 +106,141 @@ def _replace_text_plan(source: Path) -> dict:
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_v3_edit_plan_discovers_and_applies_rotation_and_transition_operations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_targets(timeline):
+                audio = {
+                    "type": 2,
+                    "thisUId": "audio-source-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 70_000_000,
+                    "inPoint": 0,
+                    "outPoint": 30_000_000,
+                    "postTransition": {
+                        "id": "audio/blender/transition-fade",
+                        "display": "audio fade",
+                        "thisUId": "audio-transition",
+                        "type": 5,
+                        "tlBegin": 50_000_000,
+                        "tlEnd": 70_000_000,
+                    },
+                }
+                video = {
+                    "type": 1,
+                    "thisUId": "video-source-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 70_000_000,
+                    "inPoint": 0,
+                    "outPoint": 30_000_000,
+                    "effectChainList": [
+                        {
+                            "effectList": [
+                                {
+                                    "id": "video/effect/transform",
+                                    "paramList": [
+                                        {"name": "Rotation", "fxParam": {"unValue": 10.0}}
+                                    ],
+                                }
+                            ]
+                        }
+                    ],
+                    "postTransition": {
+                        "id": "2981D185-D52E-44f4-ABD5-3CE83890E32E",
+                        "display": "Dissolve",
+                        "thisUId": "video-transition",
+                        "type": 5,
+                        "tlBegin": 50_000_000,
+                        "tlEnd": 70_000_000,
+                    },
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(audio)
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(video)
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
+            digest = project_sha256(source)
+            targets = list_edit_targets(source)
+            self.assertEqual(targets["api_version"], 3)
+            self.assertEqual(
+                targets["rotation_targets"][0]["selector"],
+                {"clip_uid": "video-source-clip", "rotation": "10.0"},
+            )
+            transition_selector = {
+                "video_clip_uid": "video-source-clip",
+                "audio_clip_uid": "audio-source-clip",
+                "duration_ticks": 20_000_000,
+            }
+            self.assertEqual(
+                targets["linked_transition_targets"][0]["selector"],
+                transition_selector,
+            )
+
+            rotation_plan = {
+                "schema_version": 3,
+                "source": {"sha256": digest},
+                "operations": [
+                    {
+                        "op": "replace_clip_rotation",
+                        "target": {"clip_uid": "video-source-clip", "rotation": "10.0"},
+                        "new_rotation": "20.0",
+                    }
+                ],
+            }
+            rotation_explanation = explain_edit_plan(source, rotation_plan)
+            self.assertFalse(rotation_explanation["writes_performed"])
+            self.assertEqual(rotation_explanation["operations"][0]["new_rotation"], "20.0")
+            rotation_result = apply_edit_plan(
+                source, root / "rotation-output.wfp", rotation_plan
+            )
+            self.assertTrue(rotation_result["verification"]["source_aware_audit_valid"])
+
+            duration_plan = {
+                "schema_version": 3,
+                "source": {"sha256": digest},
+                "operations": [
+                    {
+                        "op": "replace_linked_transition_duration",
+                        "target": transition_selector,
+                        "new_duration_ticks": 10_000_000,
+                    }
+                ],
+            }
+            duration_explanation = explain_edit_plan(source, duration_plan)
+            self.assertEqual(
+                duration_explanation["operations"][0]["resolved_new_tl_begin"],
+                60_000_000,
+            )
+            duration_result = apply_edit_plan(
+                source, root / "duration-output.wfp", duration_plan
+            )
+            self.assertTrue(duration_result["verification"]["source_aware_audit_valid"])
+            too_long_plan = dict(duration_plan)
+            too_long_plan["operations"] = [dict(duration_plan["operations"][0])]
+            too_long_plan["operations"][0]["new_duration_ticks"] = 40_000_000
+            with self.assertRaisesRegex(WfpError, "begins before its linked clips"):
+                explain_edit_plan(source, too_long_plan)
+
+            removal_plan = {
+                "schema_version": 3,
+                "source": {"sha256": digest},
+                "operations": [{"op": "remove_linked_transition", "target": transition_selector}],
+            }
+            removal_result = apply_edit_plan(
+                source, root / "removal-output.wfp", removal_plan
+            )
+            self.assertTrue(removal_result["verification"]["source_aware_audit_valid"])
+
+            with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
+                load_edit_plan(
+                    {
+                        "schema_version": 2,
+                        "source": {"sha256": digest},
+                        "operations": rotation_plan["operations"],
+                    }
+                )
+
     def test_linked_transition_duration_and_removal_change_only_pair(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -414,7 +549,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 2)
+            self.assertEqual(targets["api_version"], 3)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -471,11 +606,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema["$defs"]["cloneTitleCardsOperation"]["properties"]["op"]["const"],
                 "clone_title_cards",
             )
-            schema_v2 = edit_plan_schema()
+            schema_v2 = edit_plan_schema(2)
             self.assertEqual(schema_v2["properties"]["schema_version"]["const"], 2)
             self.assertEqual(
                 schema_v2["$defs"]["replaceTitleTextOperation"]["properties"]["op"]["const"],
                 "replace_title_text",
+            )
+            schema_v3 = edit_plan_schema()
+            self.assertEqual(schema_v3["properties"]["schema_version"]["const"], 3)
+            self.assertEqual(
+                schema_v3["$defs"]["replaceClipRotationOperation"]["properties"]["op"]["const"],
+                "replace_clip_rotation",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -487,7 +628,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 2)
+            self.assertEqual(explanation["api_version"], 3)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -626,7 +767,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 2)
+            self.assertEqual(error["api_version"], 3)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 
