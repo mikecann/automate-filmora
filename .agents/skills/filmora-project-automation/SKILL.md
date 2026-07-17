@@ -111,6 +111,19 @@ interpretations as hypotheses.
 
 Only proceed after the field has a repeatable before/after mapping.
 
+Prefer the declarative API for a supported operation:
+
+```bash
+python3 -m filmora_wfp edit-targets input.wfp --json
+python3 -m filmora_wfp explain-plan input.wfp plan.json --json
+python3 -m filmora_wfp apply-plan input.wfp output.wfp plan.json --json
+```
+
+`explain-plan` must report `writes_performed: false`. The plan must contain the
+exact current source SHA-256 and the output must not exist. If an operation is not
+listed by `edit-targets`, do not encode it as an edit plan until it passes the
+controlled experiment and writer acceptance workflow.
+
 1. Add a targeted command that refuses identical input/output paths.
 2. Copy the input and change the minimum JSON fields.
 3. Preserve unrelated members and avoid regenerating UUIDs.

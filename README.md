@@ -30,6 +30,8 @@ python3 -m filmora_wfp eval-format "/path/to/project.wfp"
 python3 -m filmora_wfp survey "/path/to/project-folder" --reference-version 15.6.4.11894
 python3 -m filmora_wfp titles "/path/to/project.wfp"
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
+python3 -m filmora_wfp edit-targets "/path/to/project.wfp"
+python3 -m filmora_wfp explain-plan project.wfp work/edit-plan.json
 ```
 
 `map` is the broad reverse-engineering command. It inventories normalized JSON
@@ -47,9 +49,9 @@ of the embedded project rather than its potentially huge media payload. Pass
 without shell redirection. Source paths are omitted unless `--reveal-paths` is
 explicitly supplied, and an existing output file is never overwritten.
 
-Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, or `diff`
-for machine-readable output. Paths are reduced to basenames unless
-`--reveal-paths` is supplied.
+Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, `diff`, or
+any edit-plan command for machine-readable output. Paths are reduced to
+basenames unless `--reveal-paths` is supplied.
 
 `unpack` safely extracts a project to a new directory without touching the source:
 
@@ -85,11 +87,25 @@ project timestamp and integrity token stayed unchanged, unrelated source members
 remain byte-identical, new card media folders are complete, and every new outer
 timeline has paired visual/audio placements.
 
+For automation, prefer the versioned declarative edit-plan layer over calling the
+writer directly:
+
+```bash
+python3 -m filmora_wfp edit-targets project.wfp --json
+python3 -m filmora_wfp explain-plan project.wfp work/edit-plan.json --json
+python3 -m filmora_wfp apply-plan project.wfp work/output.wfp work/edit-plan.json --json
+```
+
+Plans require the exact source SHA-256, resolve selectors from the latest source,
+and expose the Filmora round-trip as an explicit incomplete verification step.
+See [`docs/edit-plan-api.md`](docs/edit-plan-api.md).
+
 ## Repository map
 
 - `filmora_wfp/`: dependency-free inspection, validation, diff, unpack, and narrow copy tools.
 - `docs/format/`: observed project structure and field notes.
 - `docs/experiments.md`: repeatable reverse-engineering protocol.
+- `docs/edit-plan-api.md`: versioned CLI and Python mutation contract.
 - `docs/case-studies/`: sanitized observations from real projects.
 - `.agents/skills/filmora-project-automation/`: reusable Codex workflow.
 - `tests/`: synthetic fixtures and safety tests.
@@ -111,7 +127,10 @@ The tools can currently:
 - compare two controlled project saves, including embedded JSON changes;
 - detect malformed archives, unresolved timeline references, and unsafe ZIP paths;
 - clone the observed three-timeline section-card graph into a new project copy;
-- audit a generated copy against its exact source project.
+- audit a generated copy against its exact source project;
+- discover current mutation targets and source fingerprints;
+- explain a strict, versioned edit plan without writing;
+- apply the proven title-card operation through the declarative API.
 
 The title-card cloner is deliberately not a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

@@ -13,6 +13,12 @@ from .archive import WfpArchive, WfpError
 from .audit import audit_title_card_copy
 from .corpus import survey_projects
 from .diffing import diff_projects
+from .edit_plan import (
+    EDIT_PLAN_API_VERSION,
+    apply_edit_plan,
+    explain_edit_plan,
+    list_edit_targets,
+)
 from .evals import evaluate_project
 from .mapping import map_project
 from .title_cards import clone_title_cards, load_title_card_spec
@@ -271,6 +277,65 @@ def _print_survey(result: Dict[str, Any]) -> None:
             print("  {0}: {1} projects".format(failure.get("probe"), failure.get("projects")))
 
 
+def _print_edit_targets(result: Dict[str, Any]) -> None:
+    source = result.get("source") or {}
+    print(
+        "Project: {0}  Filmora {1} on {2}".format(
+            source.get("filename"),
+            source.get("filmora_version") or "?",
+            source.get("os") or "?",
+        )
+    )
+    print("SHA-256: {0}".format(source.get("sha256")))
+    templates = result.get("title_card_templates") or []
+    print("Compatible title-card templates: {0}".format(len(templates)))
+    for target in templates:
+        selector = target.get("selector") or {}
+        print(
+            '  timeline {0}: "{1}" / "{2}"'.format(
+                target.get("resolved_timeline_id"),
+                selector.get("heading"),
+                selector.get("subheading"),
+            )
+        )
+
+
+def _print_plan_explanation(result: Dict[str, Any]) -> None:
+    print("EDIT PLAN READY" if result.get("status") == "ready" else "EDIT PLAN NOT READY")
+    print("Writes performed: {0}".format(str(bool(result.get("writes_performed"))).lower()))
+    for operation in result.get("operations") or []:
+        target = operation.get("resolved_template") or {}
+        print(
+            "{0}: {1} card(s) from current timeline {2}".format(
+                operation.get("op"),
+                len(operation.get("cards") or []),
+                target.get("resolved_timeline_id"),
+            )
+        )
+        for card in operation.get("cards") or []:
+            print(
+                '  {0} ticks: "{1}" / "{2}"'.format(
+                    card.get("resolved_start_ticks"),
+                    card.get("heading"),
+                    card.get("subheading"),
+                )
+            )
+    print("Filmora round trip required: yes")
+
+
+def _print_plan_application(result: Dict[str, Any]) -> None:
+    print("EDIT PLAN APPLIED")
+    print(result.get("output"))
+    print("Created title cards: {0}".format(len(result.get("created_cards") or [])))
+    verification = result.get("verification") or {}
+    print(
+        "Source-aware audit: {0}".format(
+            "passed" if verification.get("source_aware_audit_valid") else "failed"
+        )
+    )
+    print("Filmora round trip still required: yes")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="filmora-project", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -351,6 +416,30 @@ def build_parser() -> argparse.ArgumentParser:
     audit_parser.add_argument("--check-media", action="store_true")
     audit_parser.add_argument("--json", action="store_true")
 
+    targets_parser = subparsers.add_parser(
+        "edit-targets",
+        help="List source-hash-bound targets supported by edit plans",
+    )
+    targets_parser.add_argument("project")
+    targets_parser.add_argument("--json", action="store_true")
+
+    explain_plan_parser = subparsers.add_parser(
+        "explain-plan",
+        help="Resolve and validate an edit plan without writing a project",
+    )
+    explain_plan_parser.add_argument("project")
+    explain_plan_parser.add_argument("plan")
+    explain_plan_parser.add_argument("--json", action="store_true")
+
+    apply_plan_parser = subparsers.add_parser(
+        "apply-plan",
+        help="Apply a verified edit plan to a new project copy",
+    )
+    apply_plan_parser.add_argument("project")
+    apply_plan_parser.add_argument("output")
+    apply_plan_parser.add_argument("plan")
+    apply_plan_parser.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -429,8 +518,34 @@ def main(argv: Optional[List[str]] = None) -> int:
             result = audit_title_card_copy(args.source, args.output, check_media=args.check_media)
             _dump_json(result) if args.json else _print_copy_audit(result)
             return 0 if result.get("valid") else 1
+        if args.command == "edit-targets":
+            result = list_edit_targets(args.project)
+            _dump_json(result) if args.json else _print_edit_targets(result)
+            return 0
+        if args.command == "explain-plan":
+            result = explain_edit_plan(args.project, args.plan)
+            _dump_json(result) if args.json else _print_plan_explanation(result)
+            return 0
+        if args.command == "apply-plan":
+            result = apply_edit_plan(args.project, args.output, args.plan)
+            _dump_json(result) if args.json else _print_plan_application(result)
+            return 0
     except WfpError as exc:
-        print("error: {0}".format(exc), file=sys.stderr)
+        if getattr(args, "json", False):
+            error_result: Dict[str, Any] = {
+                "error": {
+                    "code": "wfp_error",
+                    "message": str(exc),
+                }
+            }
+            if args.command in {"edit-targets", "explain-plan", "apply-plan"}:
+                error_result["api_version"] = EDIT_PLAN_API_VERSION
+            print(
+                json.dumps(error_result, sort_keys=True),
+                file=sys.stderr,
+            )
+        else:
+            print("error: {0}".format(exc), file=sys.stderr)
         return 2
     return 2
 

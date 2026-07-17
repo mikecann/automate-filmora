@@ -1,27 +1,37 @@
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import tempfile
 import unittest
 import zipfile
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 from filmora_wfp import (
+    EditPlan,
     WfpArchive,
     WfpError,
+    apply_edit_plan,
     audit_title_card_copy,
     clone_title_cards,
     discover_projects,
     diff_projects,
+    edit_plan_schema,
     evaluate_project,
+    explain_edit_plan,
     inspect_project,
+    list_edit_targets,
     list_titles,
+    load_edit_plan,
     map_project,
+    project_sha256,
     survey_projects,
     validate_project,
 )
+from filmora_wfp.cli import main as cli_main
 
 from tests.helpers import write_cloneable_title_project, write_project
 
@@ -42,7 +52,211 @@ def _rewrite_main_timeline(source: Path, destination: Path, mutate) -> Path:
     return destination
 
 
+def _edit_plan(source: Path, *, seconds: str = "5") -> dict:
+    return {
+        "schema_version": 1,
+        "description": "Synthetic declarative title-card edit",
+        "source": {"sha256": project_sha256(source)},
+        "operations": [
+            {
+                "id": "add-next-tip",
+                "op": "clone_title_cards",
+                "template": {
+                    "heading": "1. Template",
+                    "subheading": "Template subtitle",
+                },
+                "cards": [
+                    {
+                        "at": {"seconds": seconds},
+                        "heading": "2. Next Tip",
+                        "subheading": "A useful subtitle",
+                        "heading_font_size": "72",
+                        "heading_scale_x": "0.7",
+                        "subheading_font_size": "32",
+                        "subheading_scale_x": "0.45",
+                    }
+                ],
+            }
+        ],
+    }
+
+
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_edit_targets_and_explain_plan_resolve_current_title_texts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            targets = list_edit_targets(source)
+            self.assertEqual(targets["api_version"], 1)
+            self.assertEqual(targets["source"]["sha256"], project_sha256(source))
+            self.assertEqual(
+                targets["title_card_templates"],
+                [
+                    {
+                        "target_type": "compound_title_card_template",
+                        "selector": {
+                            "heading": "1. Template",
+                            "subheading": "Template subtitle",
+                        },
+                        "template_metrics": {
+                            "heading": {
+                                "font": "Bebas Neue",
+                                "font_size": 80.0,
+                                "scale_x": 0.7,
+                                "scale_y": 0.2,
+                            },
+                            "subheading": {
+                                "font": "Bebas Neue",
+                                "font_size": 80.0,
+                                "scale_x": 0.7,
+                                "scale_y": 0.2,
+                            },
+                        },
+                        "resolved_timeline_id": 10,
+                        "duration_ticks": 20_000_000,
+                        "current_start_ticks": [10_000_000],
+                    }
+                ],
+            )
+
+            result = explain_edit_plan(source, _edit_plan(source))
+            self.assertEqual(result["status"], "ready")
+            self.assertFalse(result["writes_performed"])
+            self.assertTrue(result["preflight"]["source_sha256_matches"])
+            self.assertTrue(result["preflight"]["format_eval_valid"])
+            operation = result["operations"][0]
+            self.assertEqual(operation["resolved_template"]["resolved_timeline_id"], 10)
+            self.assertEqual(operation["cards"][0]["resolved_start_ticks"], 50_000_000)
+            self.assertTrue(result["filmora_round_trip"]["required"])
+            self.assertFalse(result["filmora_round_trip"]["performed"])
+
+            schema = edit_plan_schema()
+            self.assertEqual(schema["properties"]["schema_version"]["const"], 1)
+            self.assertEqual(
+                schema["$defs"]["cloneTitleCardsOperation"]["properties"]["op"]["const"],
+                "clone_title_cards",
+            )
+
+    def test_apply_edit_plan_uses_audited_writer_and_keeps_ui_gate_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            source_before = source.read_bytes()
+            output = root / "output.wfp"
+
+            result = apply_edit_plan(source, output, _edit_plan(source))
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(output.is_file())
+            self.assertEqual(result["status"], "applied")
+            self.assertTrue(result["writes_performed"])
+            self.assertTrue(result["verification"]["source_aware_audit_valid"])
+            self.assertTrue(result["verification"]["filmora_round_trip_required"])
+            self.assertFalse(result["verification"]["filmora_round_trip_performed"])
+            self.assertIn("2. Next Tip", [title["text"] for title in list_titles(output)])
+
+    def test_edit_plan_rejects_stale_unsupported_and_lossy_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source = write_cloneable_title_project(Path(temporary) / "source.wfp")
+
+            stale = _edit_plan(source)
+            stale["source"]["sha256"] = "0" * 64
+            with self.assertRaisesRegex(WfpError, "Source fingerprint changed"):
+                explain_edit_plan(source, stale)
+
+            unsupported = _edit_plan(source)
+            unsupported["operations"][0]["op"] = "trim_clip"
+            with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
+                load_edit_plan(unsupported)
+
+            boolean_version = _edit_plan(source)
+            boolean_version["schema_version"] = True
+            with self.assertRaisesRegex(WfpError, "Unsupported edit-plan schema_version"):
+                load_edit_plan(boolean_version)
+
+            lossy = _edit_plan(source, seconds="1.00000001")
+            with self.assertRaisesRegex(WfpError, "100 ns tick precision"):
+                load_edit_plan(lossy)
+
+            exponent = _edit_plan(source, seconds="1e-3")
+            with self.assertRaisesRegex(WfpError, "non-negative decimal"):
+                load_edit_plan(exponent)
+
+            bypass = EditPlan(
+                schema_version=1,
+                source_sha256=project_sha256(source),
+                operations=(),
+            )
+            with self.assertRaisesRegex(WfpError, "exactly one"):
+                load_edit_plan(bypass)
+
+            with self.assertRaisesRegex(WfpError, "filesystem path"):
+                load_edit_plan(None)  # type: ignore[arg-type]
+
+            overlapping = _edit_plan(source)
+            second = dict(overlapping["operations"][0]["cards"][0])
+            second["at"] = {"seconds": "6"}
+            overlapping["operations"][0]["cards"].append(second)
+            with self.assertRaisesRegex(WfpError, "Planned title cards overlap"):
+                explain_edit_plan(source, overlapping)
+
+            with self.assertRaisesRegex(WfpError, "must use the .wfp extension"):
+                apply_edit_plan(source, Path(temporary) / "output.zip", _edit_plan(source))
+
+    def test_edit_plan_cli_json_dry_run_does_not_write(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+            source_before = source.read_bytes()
+            plan_path = root / "plan.json"
+            plan_path.write_text(json.dumps(_edit_plan(source)), encoding="utf-8")
+            stdout = io.StringIO()
+
+            with redirect_stdout(stdout):
+                exit_code = cli_main(
+                    ["explain-plan", str(source), str(plan_path), "--json"]
+                )
+
+            self.assertEqual(exit_code, 0)
+            result = json.loads(stdout.getvalue())
+            self.assertEqual(result["status"], "ready")
+            self.assertFalse(result["writes_performed"])
+            self.assertEqual(source.read_bytes(), source_before)
+
+            output = root / "cli-output.wfp"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = cli_main(
+                    [
+                        "apply-plan",
+                        str(source),
+                        str(output),
+                        str(plan_path),
+                        "--json",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            result = json.loads(stdout.getvalue())
+            self.assertEqual(result["status"], "applied")
+            self.assertTrue(result["verification"]["source_aware_audit_valid"])
+            self.assertTrue(output.is_file())
+
+            stale_plan = _edit_plan(source)
+            stale_plan["source"]["sha256"] = "0" * 64
+            stale_path = root / "stale-plan.json"
+            stale_path.write_text(json.dumps(stale_plan), encoding="utf-8")
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                exit_code = cli_main(
+                    ["explain-plan", str(source), str(stale_path), "--json"]
+                )
+            self.assertEqual(exit_code, 2)
+            error = json.loads(stderr.getvalue())
+            self.assertEqual(error["api_version"], 1)
+            self.assertEqual(error["error"]["code"], "wfp_error")
+            self.assertIn("Source fingerprint changed", error["error"]["message"])
+
     def test_corpus_survey_deduplicates_and_aggregates_features(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -97,6 +311,8 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertEqual(result["inventory"]["unique_file_hashes"], 1)
             self.assertEqual(result["inventory"]["duplicate_files"], 1)
             self.assertEqual(result["samples"][0]["copies"], 2)
+            with self.assertRaisesRegex(WfpError, "require a .wfp source"):
+                list_edit_targets(bundle)
 
     def test_format_eval_checks_graph_cache_and_title_invariants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

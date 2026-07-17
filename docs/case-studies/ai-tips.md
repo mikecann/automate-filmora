@@ -81,6 +81,20 @@ The current source already contains tip-card headings 6 through 14. The old
 nine-card content spec therefore creates duplicates and is now a regression
 fixture only, not a usable edit for the current project.
 
+## Headless edit-plan dry run
+
+The version 1 `edit-targets` command inspected the current source without opening
+Filmora and found 12 templates compatible with `clone_title_cards`. It resolved a
+plan selecting tip 6 by its visible heading and subtitle, converted 300 seconds
+to 3,000,000,000 ticks, passed all source format probes, and returned
+`writes_performed: false`.
+
+Tips 7 and 9 were deliberately absent from compatible targets. Their standalone
+graphs have paired type `16` and `6` placements, but each has only one non-empty
+title layer. The proven writer requires exactly two non-empty layers, so the API
+rejects those cards as templates instead of guessing how an empty subtitle should
+be treated.
+
 A Filmora save occurred during the experiment. It compacted the previously sparse
 nested IDs into the contiguous range `10` through `25`, set `serialNumber` to
 `26`, rewrote every standalone timeline document, removed one compound thumbnail,

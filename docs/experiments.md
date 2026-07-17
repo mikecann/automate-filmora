@@ -135,3 +135,25 @@ Filmora build:
 The source-aware audit is the automated pass/fail result. Application open,
 render, and save remain required compatibility gates because the WFP schema is
 undocumented.
+
+## Headless edit-plan API milestone
+
+API version 1 and edit-plan schema version 1 wrap the existing verified
+title-card cloner. Target discovery, strict plan parsing, source fingerprinting,
+dry-run explanation, application, and the source-aware audit all run without
+opening Filmora. The result keeps `filmora_round_trip_performed` false until an
+application check actually happens.
+
+The next controlled Filmora batch should evaluate operations in this order:
+
+1. replace existing title text without changing measured geometry;
+2. change an existing source clip's Basic rotation value;
+3. change the duration of an existing linked transition pair;
+4. remove an existing linked transition pair;
+5. move or trim a linked A/V pair;
+6. split a linked A/V pair and verify every regenerated identifier.
+
+Each operation stays absent from the public plan schema until its generated copy
+passes the writer acceptance gate above. Track operations and new effect
+insertion remain later work because their persistence or identifier behaviour is
+less certain.
