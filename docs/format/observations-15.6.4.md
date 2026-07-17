@@ -102,6 +102,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |
 | linked A/V move | move a transition-free pair one second later | moved only both clips' `tlBegin`/`tlEnd` in a normalized undo/redo pair |
 | linked A/V end trim | shorten a forward 1x pair by one second | changed both clips' `tlEnd`, `outPoint`, and `speed.offsetEnd` |
+| linked A/V start trim | shorten the same pair's start by one second | changed both clips' `tlBegin`, `inPoint`, and `speed.offset` |
 
 The basic title defaulted to five seconds and extended the project to 7.48
 seconds. Its title document was 3,467 UTF-8 bytes with `scriptBufSize` 3,468. The
@@ -130,6 +131,12 @@ changes. The generated and Filmora-resaved copies retained `tlEnd: 50,000,000`,
 `outPoint: 40,000,000`, and `speed.offsetEnd: 4.0` on both clips. The saved copy
 reopened and passed all format probes. Evidence remains limited to forward
 constant 1x speed and an end trim that does not extend project duration.
+
+The complementary start-trim writer changed exactly six fields and used exact
+`speed.offset: 3.48` rather than Filmora UI's floating artifact
+`3.4799999999999995`. Filmora accepted and preserved the exact value through
+Save As and reopen. The accepted copy retained `tlBegin: 44,800,000` and
+`inPoint: 34,800,000` on both clips and passed every format probe.
 
 ## Filmora-native round trip
 

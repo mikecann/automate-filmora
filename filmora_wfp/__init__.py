@@ -37,6 +37,11 @@ from .linked_av import (
     preflight_linked_av_move,
     trim_linked_av_pair_end,
 )
+from .linked_av_start_trim import (
+    audit_linked_av_start_trim_copy,
+    preflight_linked_av_start_trim,
+    trim_linked_av_pair_start,
+)
 from .rotation import (
     audit_clip_rotation_copy,
     preflight_clip_rotation,
@@ -93,10 +98,13 @@ __all__ = [
     "map_project",
     "audit_linked_av_move_copy",
     "audit_linked_av_end_trim_copy",
+    "audit_linked_av_start_trim_copy",
     "move_linked_av_pair",
     "preflight_linked_av_end_trim",
+    "preflight_linked_av_start_trim",
     "preflight_linked_av_move",
     "trim_linked_av_pair_end",
+    "trim_linked_av_pair_start",
     "project_sha256",
     "preflight_clip_rotation",
     "preflight_linked_transition",
@@ -109,4 +117,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.4.1"
+__version__ = "0.4.2"

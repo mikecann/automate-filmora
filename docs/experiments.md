@@ -46,8 +46,8 @@ The disposable sequence now covers blank save, media import, timeline insertion,
 linked A/V split at an exact time, Basic Title insertion, and a Filmora-native
 round trip of a generated title-card copy. A second controlled batch covered
 track lock/mute persistence, source-clip rotation, linked Dissolve insertion,
-transition duration, transition removal, a linked A/V timeline move, and a
-linked A/V end trim. See
+transition duration, transition removal, a linked A/V timeline move, and linked
+A/V trims at both edges. See
 [`format/observations-15.6.4.md`](format/observations-15.6.4.md) for the sanitized
 results.
 
@@ -249,11 +249,32 @@ Filmora-saved copy retained `tlEnd: 50,000,000`, `outPoint: 40,000,000`, and
 Like movement, end trim is currently a guarded Python primitive and remains out
 of immutable edit-plan schema version 3.
 
+## Existing linked A/V start-trim acceptance
+
+Dragging the start of the already end-trimmed linked pair one second later
+changed the complementary six fields in the same-session normalized diff:
+
+- both `tlBegin` values: `34,800,000` to `44,800,000`;
+- both `inPoint` values: `24,800,000` to `34,800,000`;
+- both `speed.offset` values: `2.48` to `3.4799999999999995`.
+
+The long decimal was a Filmora UI floating-point artifact. The narrow writer
+serialized the exact derived value `3.48` while changing only the same six
+fields. Filmora 15.6.4.11894 opened the generated copy, visibly showed the
+shortened pair, saved it, and reopened it. The Filmora-saved copy retained exact
+`speed.offset: 3.48` on both clips, plus `tlBegin: 44,800,000` and
+`inPoint: 34,800,000`, and passed every format probe.
+
+The start writer enforces the same forward constant 1x, matching-pair,
+transition-free, and positive-range restrictions as the end writer. It is also
+Python-only and absent from edit-plan schema version 3.
+
 The next controlled Filmora batch should evaluate:
 
-1. trim the start of a linked A/V pair and correlate source/timeline ranges;
-2. split a linked A/V pair and verify every regenerated identifier;
-3. repeat linked movement and trimming on more sources and track layouts.
+1. split a linked A/V pair and verify every regenerated identifier;
+2. repeat linked movement and trimming on more sources and track layouts;
+3. evaluate whether movement and both edge trims have enough coverage for an
+   edit-plan API/schema version 4.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

@@ -186,3 +186,20 @@ forward constant-speed state, and that the requested end retains a positive
 range. It does not claim support for reverse, variable-speed, transitioned,
 start-trimmed, or duration-extending clips. Filmora opened, saved, and reopened
 the generated six-field copy, and the saved copy retained all six values.
+
+### Controlled linked-pair start trim
+
+Shortening the same pair's start by one second changed the complementary fields.
+Both `tlBegin` values moved from `34,800,000` to `44,800,000`, both absolute
+source `inPoint` values moved from `24,800,000` to `34,800,000`, and both
+`speed.offset` values advanced from `2.48` seconds.
+
+Filmora's direct UI save serialized the new offset as
+`3.4799999999999995`. A narrow writer instead stored the exact derived value
+`3.48`; Filmora opened it, preserved `3.48` through Save As, and reopened the
+saved copy. This confirms that the longer value was floating-point noise, not a
+required representation.
+
+The start-trim writer has the same forward constant 1x, matching source/range,
+transition-free, and positive-duration boundary as the end-trim writer. It
+changes exactly paired `tlBegin`, `inPoint`, and `speed.offset` fields.

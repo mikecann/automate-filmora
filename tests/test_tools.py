@@ -31,6 +31,7 @@ from filmora_wfp import (
     move_linked_av_pair,
     preflight_linked_av_end_trim,
     preflight_linked_av_move,
+    preflight_linked_av_start_trim,
     project_sha256,
     replace_clip_rotation,
     replace_linked_transition_duration,
@@ -38,6 +39,7 @@ from filmora_wfp import (
     remove_linked_transition,
     survey_projects,
     trim_linked_av_pair_end,
+    trim_linked_av_pair_start,
     validate_project,
 )
 from filmora_wfp.cli import main as cli_main
@@ -585,6 +587,79 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     old_end_ticks=60_000_000,
                     new_end_ticks=40_000_000,
                 )
+    def test_linked_av_start_trim_changes_only_six_start_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+            speed_param = json.dumps(
+                {
+                    "Version": 3,
+                    "ParameterType": 0,
+                    "keyframeSets": [
+                        {"_time": 0.0, "_value": 1.0},
+                        {"_time": 5.0, "_value": 1.0},
+                    ],
+                    "_totalTime": 5.0,
+                },
+                separators=(",", ":"),
+            )
+
+            def add_linked_pair(timeline):
+                timeline["resources"].append(
+                    {"sourceUuid": "linked-source", "filename": "file:///fixture.mov"}
+                )
+                common = {
+                    "sourceUuid": "linked-source",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "inPoint": 20_000_000,
+                    "outPoint": 40_000_000,
+                    "speed": {
+                        "offset": 2.0,
+                        "offsetEnd": 4.0,
+                        "reverse": False,
+                        "speedParam": speed_param,
+                    },
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(
+                    {**common, "type": 2, "thisUId": "trim-audio"}
+                )
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {**common, "type": 1, "thisUId": "trim-video"}
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_linked_pair)
+            output = root / "trimmed.wfp"
+            result = trim_linked_av_pair_start(
+                source,
+                output,
+                video_clip_uid="trim-video",
+                audio_clip_uid="trim-audio",
+                old_start_ticks=40_000_000,
+                old_end_ticks=60_000_000,
+                new_start_ticks=50_000_000,
+                expected_source_sha256=project_sha256(source),
+            )
+
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(result["new_in_point"], 30_000_000)
+            self.assertEqual(str(result["new_offset"]), "3.0")
+            changes = diff_projects(source, output)["json_changes"]
+            self.assertEqual(len(changes), 6)
+            self.assertEqual(
+                {change["path"].rsplit(".", 1)[-1] for change in changes},
+                {"tlBegin", "inPoint", "offset"},
+            )
+            with self.assertRaisesRegex(WfpError, "shorten the selected positive clip range"):
+                preflight_linked_av_start_trim(
+                    source,
+                    video_clip_uid="trim-video",
+                    audio_clip_uid="trim-audio",
+                    old_start_ticks=40_000_000,
+                    old_end_ticks=60_000_000,
+                    new_start_ticks=60_000_000,
+                )
+
     def test_replace_existing_clip_rotation_changes_only_selected_value(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

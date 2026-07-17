@@ -595,10 +595,16 @@ def audit_linked_av_end_trim_copy(
     for change in result.get("json_changes") or []:
         field = str(change.get("path")).rsplit(".", 1)[-1]
         expected = expected_values.get(field)
+        after_matches = bool(expected and change.get("after") == expected[1])
+        if field == "offsetEnd" and expected:
+            try:
+                after_matches = Decimal(str(change.get("after"))) == expected[1]
+            except Exception:
+                after_matches = False
         matches = bool(
             change.get("kind") == "changed"
             and expected
-            and change.get("after") == expected[1]
+            and after_matches
             and (expected[0] is None or change.get("before") == expected[0])
         )
         if matches:
