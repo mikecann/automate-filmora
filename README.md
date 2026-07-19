@@ -141,6 +141,8 @@ The tools can currently:
   exact four placement fields;
 - shorten either edge of one transition-free, forward 1x linked A/V pair while
   auditing the matching timeline, source, and decimal speed-offset fields;
+- split one transition-free, forward 1x linked A/V pair while regenerating the
+  second halves' clip/effect IDs and shared opaque link ID;
 - discover, explain, and apply those linked A/V moves and trims through
   declarative edit-plan API/schema version 4.
 

@@ -138,6 +138,16 @@ The complementary start-trim writer changed exactly six fields and used exact
 Save As and reopen. The accepted copy retained `tlBegin: 44,800,000` and
 `inPoint: 34,800,000` on both clips and passed every format probe.
 
+The original linked-pair split at `24,800,000` was repeated from a fresh Filmora
+Save As baseline. Both runs shortened the first halves' `tlEnd`, `outPoint`, and
+`speed.offsetEnd`, cloned complete second halves, and assigned fresh `thisUId`
+values to both new clips and every nested effect. The new visual/audio halves
+shared one new key-3 pair UUID while retaining the original pair's media-link
+key. A guarded writer reproduced that structure. Filmora opened the generated
+copy, saved it, preserved all four half ranges and exact `2.48` offsets, and
+reopened the saved copy. The writer remains limited to transition-free forward
+constant-1x pairs with the observed key-3 link identifier shape.
+
 ## Filmora-native round trip
 
 A previously generated, loadable title-card copy was opened in Filmora and saved

@@ -281,11 +281,27 @@ trim diffs. Schemas 1 through 3 remain byte-for-byte unchanged and supported.
 
 The next controlled Filmora batch should evaluate:
 
-1. split a linked A/V pair and verify every regenerated identifier;
-2. repeat linked movement and trimming on more sources and track layouts;
+1. repeat linked movement, trimming, and splitting on more sources and track layouts;
+2. test whether linked splits preserve more complex clip effects and keyframes;
 3. add a single-operation batch format only if a real workflow needs it.
 
-Each operation stays absent from the public plan schema until its generated copy
-passes the writer acceptance gate above. Track operations and new effect
-insertion remain later work because their persistence or identifier behaviour is
-less certain.
+The split is intentionally a Python-only primitive and absent from immutable
+edit-plan schema version 4. A future declarative promotion requires a new schema
+version plus broader fixture coverage. Track operations and new effect insertion
+remain later work because their persistence or identifier behaviour is less
+certain.
+
+## Existing linked A/V split acceptance
+
+The initial 2.48-second split was repeated from a new Filmora Save As baseline.
+Both controlled diffs produced the same structural rule: shorten the first
+visual/audio halves, clone full second halves at the split point, regenerate
+both clip IDs and every nested effect ID, and assign the new halves one shared
+fresh key-3 pair UUID. Media-link user data, source UUID, stream selection,
+effects, and serialized speed parameters remained otherwise unchanged.
+
+The guarded split writer reproduced those rules on the repeated baseline. Its
+source-aware audit passed, as did every format probe. Filmora 15.6.4.11894 opened
+the generated project, visibly showed both linked halves, saved it to another
+new path, retained `0..24,800,000` and `24,800,000..50,000,000` on both tracks
+with exact `2.48` source/offset boundaries, and reopened the saved copy.

@@ -23,7 +23,8 @@ actual project and Filmora build before asserting field semantics.
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
   move that stays inside the declared project duration without same-track
   collisions, plus a shortening end trim for a transition-free forward 1x
-  linked pair and its complementary start trim. There is no generic writer.
+  linked pair, its complementary start trim, and a guarded split of the same
+  supported linked-pair shape. There is no generic writer.
 
 ## Inspect a project
 

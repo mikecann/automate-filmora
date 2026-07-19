@@ -203,3 +203,27 @@ required representation.
 The start-trim writer has the same forward constant 1x, matching source/range,
 transition-free, and positive-duration boundary as the end-trim writer. It
 changes exactly paired `tlBegin`, `inPoint`, and `speed.offset` fields.
+
+### Controlled linked-pair split
+
+Splitting the original five-second linked pair at `24,800,000` ticks was repeated
+from a new Filmora Save As baseline. On both the visual and audio clips, Filmora
+shortened the first half to `0..24,800,000`, set `outPoint` to `24,800,000`, and
+set `speed.offsetEnd` to `2.48`. It cloned a second half at
+`24,800,000..50,000,000`, with matching `inPoint` and `speed.offset: 2.48`.
+
+Each second-half clip received a fresh canonical `thisUId`, as did every nested
+effect in that clone. The two new halves shared one fresh uppercase pair-style
+UUID in clip `userData` key `3`; the visual encoding retained its 64-byte NUL
+padding and the audio encoding retained its 47-byte form. Other media, stream,
+effect, speed-parameter, and opaque user-data values were copied unchanged.
+Save As also rotated a timeline key-11000 UUID, but repeated saves show that to
+be save noise rather than a required split mutation, so the writer preserves it.
+
+The guarded writer enforces a transition-free type-1/type-2 pair, identical
+source and timeline ranges, forward constant 1x speed, an interior split point,
+and the observed shared key-3 link shape. Its audit reconstructs the expected
+halves, rejects reused clip/effect IDs, and checks that unrelated timeline and
+archive values remain unchanged. Filmora 15.6.4.11894 opened the generated copy,
+saved it to a new path, retained all four half ranges and exact offsets, and
+reopened the saved copy.

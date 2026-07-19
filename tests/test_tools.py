@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import io
 import json
 import shutil
@@ -38,6 +39,7 @@ from filmora_wfp import (
     replace_title_text,
     remove_linked_transition,
     survey_projects,
+    split_linked_av_pair,
     trim_linked_av_pair_end,
     trim_linked_av_pair_start,
     validate_project,
@@ -765,6 +767,124 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             }
             with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
                 load_edit_plan(rejected)
+
+    def test_linked_av_split_clones_second_halves_with_fresh_linked_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+            speed_param = json.dumps(
+                {
+                    "Version": 3,
+                    "ParameterType": 0,
+                    "keyframeSets": [
+                        {"_time": 0.0, "_value": 1.0},
+                        {"_time": 5.0, "_value": 1.0},
+                    ],
+                    "_totalTime": 5.0,
+                },
+                separators=(",", ":"),
+            )
+            link_text = "11-22-33-44-55-66-47-88-99-AA-BB-CC-DD-EE-FF-00"
+
+            def link_data(length):
+                raw = link_text.encode("ascii") + b"\0" * (length - len(link_text))
+                return [{"key": 3, "size": length, "data": base64.b64encode(raw).decode("ascii")}]
+
+            def add_linked_pair(timeline):
+                timeline["resources"].append(
+                    {"sourceUuid": "split-source", "filename": "file:///fixture.mov"}
+                )
+                common = {
+                    "sourceUuid": "split-source",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "inPoint": 20_000_000,
+                    "outPoint": 40_000_000,
+                    "speed": {
+                        "offset": 2.0,
+                        "offsetEnd": 4.0,
+                        "reverse": False,
+                        "speedParam": speed_param,
+                    },
+                }
+                audio = {
+                    **common,
+                    "type": 2,
+                    "thisUId": "split-audio",
+                    "effectChainList": [
+                        {"effectList": [{"id": "audio/effect/volume", "thisUId": "audio-effect"}]}
+                    ],
+                    "userData": link_data(47),
+                }
+                video = {
+                    **common,
+                    "type": 1,
+                    "thisUId": "split-video",
+                    "effectChainList": [
+                        {"effectList": [{"id": "video/effect/transform", "thisUId": "video-effect"}]}
+                    ],
+                    "userData": link_data(64),
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(audio)
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(video)
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_linked_pair)
+            source_before = source.read_bytes()
+            output = root / "split.wfp"
+            result = split_linked_av_pair(
+                source,
+                output,
+                video_clip_uid="split-video",
+                audio_clip_uid="split-audio",
+                old_start_ticks=40_000_000,
+                old_end_ticks=60_000_000,
+                split_ticks=50_000_000,
+                expected_source_sha256=project_sha256(source),
+            )
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(result["new_in_point"], 30_000_000)
+            self.assertEqual(str(result["new_offset"]), "3.0")
+            with WfpArchive(output) as archive:
+                timeline = archive.main_timeline()["timelineInfos"][0]
+            audio_clips = [clip for clip in timeline["trackInfos"][0]["clipList"] if clip.get("sourceUuid") == "split-source"]
+            video_clips = [clip for clip in timeline["trackInfos"][1]["clipList"] if clip.get("sourceUuid") == "split-source"]
+            self.assertEqual([(clip["tlBegin"], clip["tlEnd"]) for clip in audio_clips], [(40_000_000, 50_000_000), (50_000_000, 60_000_000)])
+            self.assertEqual([(clip["tlBegin"], clip["tlEnd"]) for clip in video_clips], [(40_000_000, 50_000_000), (50_000_000, 60_000_000)])
+            new_ids = {audio_clips[1]["thisUId"], video_clips[1]["thisUId"]}
+            self.assertTrue(new_ids.isdisjoint({"split-audio", "split-video"}))
+
+            stale = root / "stale.wfp"
+            with self.assertRaisesRegex(WfpError, "Source fingerprint changed"):
+                split_linked_av_pair(
+                    source,
+                    stale,
+                    video_clip_uid="split-video",
+                    audio_clip_uid="split-audio",
+                    old_start_ticks=40_000_000,
+                    old_end_ticks=60_000_000,
+                    split_ticks=50_000_000,
+                    expected_source_sha256="0" * 64,
+                )
+            self.assertFalse(stale.exists())
+
+            rejected = root / "rejected.wfp"
+            with patch(
+                "filmora_wfp.linked_av_split.audit_linked_av_split_copy",
+                return_value={"valid": False, "errors": ["controlled split audit failure"]},
+            ):
+                with self.assertRaisesRegex(WfpError, "controlled split audit failure"):
+                    split_linked_av_pair(
+                        source,
+                        rejected,
+                        video_clip_uid="split-video",
+                        audio_clip_uid="split-audio",
+                        old_start_ticks=40_000_000,
+                        old_end_ticks=60_000_000,
+                        split_ticks=50_000_000,
+                    )
+            self.assertFalse(rejected.exists())
 
     def test_replace_existing_clip_rotation_changes_only_selected_value(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
