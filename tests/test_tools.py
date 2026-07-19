@@ -16,6 +16,7 @@ from filmora_wfp import (
     WfpArchive,
     WfpError,
     apply_edit_plan,
+    audit_linked_av_split_copy,
     audit_title_text_copy,
     audit_title_card_copy,
     clone_title_cards,
@@ -854,6 +855,33 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertEqual([(clip["tlBegin"], clip["tlEnd"]) for clip in video_clips], [(40_000_000, 50_000_000), (50_000_000, 60_000_000)])
             new_ids = {audio_clips[1]["thisUId"], video_clips[1]["thisUId"]}
             self.assertTrue(new_ids.isdisjoint({"split-audio", "split-video"}))
+
+            def invalidate_new_video_id(timeline_document):
+                clips = timeline_document["timelineInfos"][0]["trackInfos"][1]["clipList"]
+                next(
+                    clip
+                    for clip in clips
+                    if clip.get("sourceUuid") == "split-source"
+                    and clip.get("tlBegin") == 50_000_000
+                )["thisUId"] = "not-a-canonical-uuid"
+
+            tampered = _rewrite_main_timeline(
+                output, root / "tampered.wfp", invalidate_new_video_id
+            )
+            tampered_audit = audit_linked_av_split_copy(
+                source,
+                tampered,
+                video_clip_uid="split-video",
+                audio_clip_uid="split-audio",
+                old_start_ticks=40_000_000,
+                old_end_ticks=60_000_000,
+                split_ticks=50_000_000,
+            )
+            self.assertFalse(tampered_audit["valid"])
+            self.assertTrue(
+                any("invalid or reused" in error for error in tampered_audit["errors"]),
+                tampered_audit,
+            )
 
             stale = root / "stale.wfp"
             with self.assertRaisesRegex(WfpError, "Source fingerprint changed"):
