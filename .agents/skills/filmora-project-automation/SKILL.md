@@ -129,11 +129,10 @@ exact current source SHA-256 and the output must not exist. If an operation is n
 listed by `edit-targets`, do not encode it as an edit plan until it passes the
 controlled experiment and writer acceptance workflow.
 
-The linked A/V move and edge trims are currently Python-only through
-`move_linked_av_pair`, `trim_linked_av_pair_start`, and
-`trim_linked_av_pair_end`. Do not add them to schema version 3; published schemas
-are immutable. Require a new API/schema version and more fixture coverage before
-declarative promotion.
+Edit-plan schema version 4 exposes `move_linked_av_pair`,
+`trim_linked_av_pair_start`, and `trim_linked_av_pair_end`. Use only selectors
+returned in `linked_av_targets`, and respect each target's `capabilities` list.
+Schemas 1 through 3 remain immutable and supported.
 
 1. Add a targeted command that refuses identical input/output paths.
 2. Copy the input and change the minimum JSON fields.

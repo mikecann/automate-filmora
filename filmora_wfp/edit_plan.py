@@ -15,6 +15,17 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, TypedDic
 from .analysis import WFP_TICKS_PER_SECOND, list_titles
 from .archive import WfpArchive, WfpError
 from .evals import evaluate_project
+from .linked_av import (
+    _normal_speed_state,
+    move_linked_av_pair,
+    preflight_linked_av_end_trim,
+    preflight_linked_av_move,
+    trim_linked_av_pair_end,
+)
+from .linked_av_start_trim import (
+    preflight_linked_av_start_trim,
+    trim_linked_av_pair_start,
+)
 from .rotation import preflight_clip_rotation, replace_clip_rotation
 from .title_cards import clone_title_cards
 from .title_text import preflight_title_text_replacement, replace_title_text
@@ -25,9 +36,9 @@ from .transitions import (
 )
 
 
-EDIT_PLAN_SCHEMA_VERSION = 3
-EDIT_PLAN_API_VERSION = 3
-SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3)
+EDIT_PLAN_SCHEMA_VERSION = 4
+EDIT_PLAN_API_VERSION = 4
+SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3, 4)
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _PLAIN_DECIMAL_RE = re.compile(r"^(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
 _SIGNED_DECIMAL_RE = re.compile(r"^-?(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
@@ -53,6 +64,7 @@ class EditTargetsResult(TypedDict):
     title_text_targets: List[Dict[str, Any]]
     rotation_targets: List[Dict[str, Any]]
     linked_transition_targets: List[Dict[str, Any]]
+    linked_av_targets: List[Dict[str, Any]]
 
 
 class EditPlanExplanation(TypedDict):
@@ -181,12 +193,51 @@ class RemoveLinkedTransitionOperation:
     expected_duration_ticks: int
 
 
+@dataclass(frozen=True)
+class MoveLinkedAvPairOperation:
+    """Move one transition-free linked A/V pair within declared duration."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    old_start_ticks: int
+    old_end_ticks: int
+    new_start_ticks: int
+
+
+@dataclass(frozen=True)
+class TrimLinkedAvPairStartOperation:
+    """Shorten the start of one forward 1x linked A/V pair."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    old_start_ticks: int
+    old_end_ticks: int
+    new_start_ticks: int
+
+
+@dataclass(frozen=True)
+class TrimLinkedAvPairEndOperation:
+    """Shorten the end of one forward 1x linked A/V pair."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    old_start_ticks: int
+    old_end_ticks: int
+    new_end_ticks: int
+
+
 EditOperation = Union[
     CloneTitleCardsOperation,
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
+    MoveLinkedAvPairOperation,
+    TrimLinkedAvPairStartOperation,
+    TrimLinkedAvPairEndOperation,
 ]
 
 
@@ -250,6 +301,21 @@ def _positive_ticks(value: Any, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise WfpError("{0} must be a positive integer tick count".format(label))
     return value
+
+
+def _non_negative_ticks(value: Any, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise WfpError("{0} must be a non-negative integer tick count".format(label))
+    return value
+
+
+def _json_safe_values(values: Mapping[str, Any]) -> Dict[str, Any]:
+    """Preserve exact decimals as strings in public API results."""
+
+    return {
+        key: str(value) if isinstance(value, Decimal) else value
+        for key, value in values.items()
+    }
 
 
 def _parse_position(value: Any, label: str) -> Tuple[int, str, Union[int, str]]:
@@ -380,7 +446,7 @@ def _parse_plan(value: Any) -> EditPlan:
             template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
             cards=cards,
         )
-    elif operation_name == "replace_title_text" and schema_version in (2, 3):
+    elif operation_name == "replace_title_text" and schema_version in (2, 3, 4):
         _only_keys(raw_operation, ("id", "op", "target", "new_text"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "text"), "operations[0].target")
@@ -394,7 +460,7 @@ def _parse_plan(value: Any) -> EditPlan:
         )
         if operation.new_text == operation.old_text:
             raise WfpError("operations[0].new_text must differ from the current text")
-    elif operation_name == "replace_clip_rotation" and schema_version == 3:
+    elif operation_name == "replace_clip_rotation" and schema_version in (3, 4):
         _only_keys(raw_operation, ("id", "op", "target", "new_rotation"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "rotation"), "operations[0].target")
@@ -415,7 +481,7 @@ def _parse_plan(value: Any) -> EditPlan:
     elif operation_name in (
         "replace_linked_transition_duration",
         "remove_linked_transition",
-    ) and schema_version == 3:
+    ) and schema_version in (3, 4):
         allowed = (
             ("id", "op", "target", "new_duration_ticks")
             if operation_name == "replace_linked_transition_duration"
@@ -460,6 +526,74 @@ def _parse_plan(value: Any) -> EditPlan:
                 audio_clip_uid=audio_clip_uid,
                 expected_duration_ticks=duration_ticks,
             )
+    elif operation_name in (
+        "move_linked_av_pair",
+        "trim_linked_av_pair_start",
+        "trim_linked_av_pair_end",
+    ) and schema_version == 4:
+        replacement_field = (
+            "new_end_ticks"
+            if operation_name == "trim_linked_av_pair_end"
+            else "new_start_ticks"
+        )
+        _only_keys(raw_operation, ("id", "op", "target", replacement_field), "operations[0]")
+        target = _object(raw_operation.get("target"), "operations[0].target")
+        _only_keys(
+            target,
+            ("video_clip_uid", "audio_clip_uid", "start_ticks", "end_ticks"),
+            "operations[0].target",
+        )
+        video_clip_uid = _non_empty_text(
+            target.get("video_clip_uid"), "operations[0].target.video_clip_uid"
+        )
+        audio_clip_uid = _non_empty_text(
+            target.get("audio_clip_uid"), "operations[0].target.audio_clip_uid"
+        )
+        start_ticks = _non_negative_ticks(
+            target.get("start_ticks"), "operations[0].target.start_ticks"
+        )
+        end_ticks = _positive_ticks(
+            target.get("end_ticks"), "operations[0].target.end_ticks"
+        )
+        if end_ticks <= start_ticks:
+            raise WfpError("operations[0].target must have a positive timeline range")
+        replacement_ticks = _non_negative_ticks(
+            raw_operation.get(replacement_field),
+            "operations[0].{0}".format(replacement_field),
+        )
+        if operation_name == "move_linked_av_pair":
+            if replacement_ticks == start_ticks:
+                raise WfpError("operations[0].new_start_ticks must move the current range")
+            operation = MoveLinkedAvPairOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                old_start_ticks=start_ticks,
+                old_end_ticks=end_ticks,
+                new_start_ticks=replacement_ticks,
+            )
+        elif operation_name == "trim_linked_av_pair_start":
+            if not start_ticks < replacement_ticks < end_ticks:
+                raise WfpError("operations[0].new_start_ticks must shorten the current range")
+            operation = TrimLinkedAvPairStartOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                old_start_ticks=start_ticks,
+                old_end_ticks=end_ticks,
+                new_start_ticks=replacement_ticks,
+            )
+        else:
+            if not start_ticks < replacement_ticks < end_ticks:
+                raise WfpError("operations[0].new_end_ticks must shorten the current range")
+            operation = TrimLinkedAvPairEndOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                old_start_ticks=start_ticks,
+                old_end_ticks=end_ticks,
+                new_end_ticks=replacement_ticks,
+            )
     else:
         raise WfpError("Unsupported edit operation: {0}".format(operation_name))
     return EditPlan(
@@ -498,13 +632,16 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             ReplaceClipRotationOperation,
             ReplaceLinkedTransitionDurationOperation,
             RemoveLinkedTransitionOperation,
+            MoveLinkedAvPairOperation,
+            TrimLinkedAvPairStartOperation,
+            TrimLinkedAvPairEndOperation,
         ),
     ):
         raise WfpError("Unsupported typed edit operation")
     _non_empty_text(operation.operation_id, "operations[0].id")
     if isinstance(operation, ReplaceTitleTextOperation):
-        if plan.schema_version not in (2, 3):
-            raise WfpError("replace_title_text requires edit-plan schema version 2 or 3")
+        if plan.schema_version not in (2, 3, 4):
+            raise WfpError("replace_title_text requires edit-plan schema version 2, 3, or 4")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         _non_empty_text(operation.old_text, "operations[0].target.text")
         _non_empty_text(operation.new_text, "operations[0].new_text")
@@ -512,8 +649,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             raise WfpError("operations[0].new_text must differ from the current text")
         return plan
     if isinstance(operation, ReplaceClipRotationOperation):
-        if plan.schema_version != 3:
-            raise WfpError("replace_clip_rotation requires edit-plan schema version 3")
+        if plan.schema_version not in (3, 4):
+            raise WfpError("replace_clip_rotation requires edit-plan schema version 3 or 4")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         old_rotation = _finite_decimal(
             operation.old_rotation, "operations[0].target.rotation"
@@ -526,8 +663,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
         operation,
         (ReplaceLinkedTransitionDurationOperation, RemoveLinkedTransitionOperation),
     ):
-        if plan.schema_version != 3:
-            raise WfpError("Linked transition operations require edit-plan schema version 3")
+        if plan.schema_version not in (3, 4):
+            raise WfpError("Linked transition operations require edit-plan schema version 3 or 4")
         _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
         _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
         if isinstance(operation, ReplaceLinkedTransitionDurationOperation):
@@ -545,6 +682,39 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             _positive_ticks(
                 operation.expected_duration_ticks, "operations[0].target.duration_ticks"
             )
+        return plan
+    if isinstance(
+        operation,
+        (MoveLinkedAvPairOperation, TrimLinkedAvPairStartOperation, TrimLinkedAvPairEndOperation),
+    ):
+        if plan.schema_version != 4:
+            raise WfpError("Linked A/V operations require edit-plan schema version 4")
+        _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
+        _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
+        start_ticks = _non_negative_ticks(
+            operation.old_start_ticks, "operations[0].target.start_ticks"
+        )
+        end_ticks = _positive_ticks(operation.old_end_ticks, "operations[0].target.end_ticks")
+        if end_ticks <= start_ticks:
+            raise WfpError("operations[0].target must have a positive timeline range")
+        if isinstance(operation, MoveLinkedAvPairOperation):
+            new_start = _non_negative_ticks(
+                operation.new_start_ticks, "operations[0].new_start_ticks"
+            )
+            if new_start == start_ticks:
+                raise WfpError("operations[0].new_start_ticks must move the current range")
+        elif isinstance(operation, TrimLinkedAvPairStartOperation):
+            new_start = _non_negative_ticks(
+                operation.new_start_ticks, "operations[0].new_start_ticks"
+            )
+            if not start_ticks < new_start < end_ticks:
+                raise WfpError("operations[0].new_start_ticks must shorten the current range")
+        else:
+            new_end = _non_negative_ticks(
+                operation.new_end_ticks, "operations[0].new_end_ticks"
+            )
+            if not start_ticks < new_end < end_ticks:
+                raise WfpError("operations[0].new_end_ticks must shorten the current range")
         return plan
     if not isinstance(operation, CloneTitleCardsOperation):
         raise WfpError("Unsupported typed edit operation")
@@ -963,6 +1133,128 @@ def _existing_effect_targets(
     return rotation_targets, transition_targets
 
 
+def _linked_av_targets(path: Pathish) -> List[Dict[str, Any]]:
+    """Discover unambiguous linked source pairs accepted by the narrow writers."""
+
+    targets: List[Dict[str, Any]] = []
+    seen = set()
+    with WfpArchive(path) as archive:
+        for _member, document in archive.timeline_documents():
+            timelines = document.get("timelineInfos")
+            if not isinstance(timelines, list):
+                continue
+            for timeline_index, timeline in enumerate(timelines):
+                if not isinstance(timeline, Mapping):
+                    continue
+                tracks = timeline.get("trackInfos")
+                if not isinstance(tracks, list):
+                    continue
+                videos: Dict[Tuple[Any, ...], List[Tuple[int, int, Mapping[str, Any]]]] = {}
+                audios: Dict[Tuple[Any, ...], List[Tuple[int, int, Mapping[str, Any]]]] = {}
+                for track_index, track in enumerate(tracks):
+                    if not isinstance(track, Mapping) or not isinstance(track.get("clipList"), list):
+                        continue
+                    track_type = track.get("trackType")
+                    for clip_index, clip in enumerate(track["clipList"]):
+                        if not isinstance(clip, Mapping):
+                            continue
+                        clip_type = clip.get("type")
+                        if (track_type, clip_type) not in ((1, 1), (2, 2)):
+                            continue
+                        uid = clip.get("thisUId")
+                        source_uuid = clip.get("sourceUuid")
+                        values = (
+                            clip.get("tlBegin"),
+                            clip.get("tlEnd"),
+                            clip.get("inPoint"),
+                            clip.get("outPoint"),
+                        )
+                        if (
+                            not isinstance(uid, str)
+                            or not isinstance(source_uuid, str)
+                            or not source_uuid
+                            or not all(isinstance(value, int) for value in values)
+                            or values[1] <= values[0]
+                            or any(key in clip for key in ("preTransition", "postTransition"))
+                        ):
+                            continue
+                        key = (source_uuid,) + values
+                        entry = (track_index, clip_index, clip)
+                        (videos if track_type == 1 else audios).setdefault(key, []).append(entry)
+                for key in sorted(set(videos) & set(audios), key=lambda item: tuple(map(str, item))):
+                    if len(videos[key]) != 1 or len(audios[key]) != 1:
+                        continue
+                    video_track, video_index, video = videos[key][0]
+                    audio_track, audio_index, audio = audios[key][0]
+                    video_uid = video.get("thisUId")
+                    audio_uid = audio.get("thisUId")
+                    selector = {
+                        "video_clip_uid": video_uid,
+                        "audio_clip_uid": audio_uid,
+                        "start_ticks": key[1],
+                        "end_ticks": key[2],
+                    }
+                    selector_key = tuple(selector.values())
+                    if selector_key in seen:
+                        continue
+                    capabilities = ["move_linked_av_pair"]
+                    try:
+                        # WfpArchive intentionally exposes ordinary JSON floats, while the
+                        # audited trim writers parse decimals losslessly. Normalize only the
+                        # two observed offsets before reusing their exact safety predicate.
+                        normalized_clips = []
+                        for clip in (video, audio):
+                            normalized_clip = dict(clip)
+                            speed_object = clip.get("speed")
+                            if not isinstance(speed_object, Mapping):
+                                raise WfpError("Linked clip has no speed object")
+                            normalized_speed = dict(speed_object)
+                            for field in ("offset", "offsetEnd"):
+                                value = normalized_speed.get(field)
+                                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                                    raise WfpError("Linked clip has a non-numeric speed offset")
+                                normalized_speed[field] = Decimal(str(value))
+                            normalized_clip["speed"] = normalized_speed
+                            normalized_clips.append(normalized_clip)
+                        video_speed = _normal_speed_state(normalized_clips[0])
+                        audio_speed = _normal_speed_state(normalized_clips[1])
+                        video_speed_object = video.get("speed")
+                        audio_speed_object = audio.get("speed")
+                        if (
+                            video_speed == audio_speed
+                            and isinstance(video_speed_object, Mapping)
+                            and isinstance(audio_speed_object, Mapping)
+                            and video_speed_object.get("speedParam")
+                            == audio_speed_object.get("speedParam")
+                            and video_speed[1] - video_speed[0] == key[2] - key[1]
+                            and key[2] - key[1] > 1
+                        ):
+                            capabilities.extend(
+                                ["trim_linked_av_pair_start", "trim_linked_av_pair_end"]
+                            )
+                    except (AttributeError, TypeError, WfpError):
+                        pass
+                    seen.add(selector_key)
+                    targets.append(
+                        {
+                            "target_type": "existing_linked_av_pair",
+                            "selector": selector,
+                            "capabilities": capabilities,
+                            "timeline_id": timeline.get("timelineId"),
+                            "timeline_index": timeline_index,
+                            "video_track_index": video_track,
+                            "video_clip_index": video_index,
+                            "audio_track_index": audio_track,
+                            "audio_clip_index": audio_index,
+                            "source_uuid": key[0],
+                            "in_point": key[3],
+                            "out_point": key[4],
+                        }
+                    )
+    targets.sort(key=lambda target: tuple(str(value) for value in target["selector"].values()))
+    return targets
+
+
 def list_edit_targets(path: Pathish) -> EditTargetsResult:
     """List targets currently supported by the declarative edit-plan API."""
 
@@ -1000,6 +1292,7 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
         )
     )
     rotation_targets, transition_targets = _existing_effect_targets(path)
+    linked_av_targets = _linked_av_targets(path)
     if project_sha256(path) != source["sha256"]:
         raise WfpError("Source project changed while edit targets were being discovered")
     return {
@@ -1011,11 +1304,15 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
             "replace_clip_rotation",
             "replace_linked_transition_duration",
             "remove_linked_transition",
+            "move_linked_av_pair",
+            "trim_linked_av_pair_start",
+            "trim_linked_av_pair_end",
         ],
         "title_card_templates": targets,
         "title_text_targets": title_targets,
         "rotation_targets": rotation_targets,
         "linked_transition_targets": transition_targets,
+        "linked_av_targets": linked_av_targets,
     }
 
 
@@ -1239,6 +1536,83 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
             "filmora_round_trip": {"required": True, "performed": False},
         }
 
+    if isinstance(
+        operation,
+        (MoveLinkedAvPairOperation, TrimLinkedAvPairStartOperation, TrimLinkedAvPairEndOperation),
+    ):
+        selector = {
+            "video_clip_uid": operation.video_clip_uid,
+            "audio_clip_uid": operation.audio_clip_uid,
+            "start_ticks": operation.old_start_ticks,
+            "end_ticks": operation.old_end_ticks,
+        }
+        target = _resolve_exact_selector(
+            selector, targets_result["linked_av_targets"], "Linked A/V pair"
+        )
+        operation_name = (
+            "move_linked_av_pair"
+            if isinstance(operation, MoveLinkedAvPairOperation)
+            else "trim_linked_av_pair_start"
+            if isinstance(operation, TrimLinkedAvPairStartOperation)
+            else "trim_linked_av_pair_end"
+        )
+        if operation_name not in target.get("capabilities", []):
+            raise WfpError(
+                "Linked A/V pair does not support {0} in the current source".format(
+                    operation_name
+                )
+            )
+        if isinstance(operation, MoveLinkedAvPairOperation):
+            linked_preflight = preflight_linked_av_move(
+                source_path,
+                video_clip_uid=operation.video_clip_uid,
+                audio_clip_uid=operation.audio_clip_uid,
+                old_start_ticks=operation.old_start_ticks,
+                old_end_ticks=operation.old_end_ticks,
+                new_start_ticks=operation.new_start_ticks,
+            )
+            requested_value = {"new_start_ticks": operation.new_start_ticks}
+        elif isinstance(operation, TrimLinkedAvPairStartOperation):
+            linked_preflight = preflight_linked_av_start_trim(
+                source_path,
+                video_clip_uid=operation.video_clip_uid,
+                audio_clip_uid=operation.audio_clip_uid,
+                old_start_ticks=operation.old_start_ticks,
+                old_end_ticks=operation.old_end_ticks,
+                new_start_ticks=operation.new_start_ticks,
+            )
+            requested_value = {"new_start_ticks": operation.new_start_ticks}
+        else:
+            linked_preflight = preflight_linked_av_end_trim(
+                source_path,
+                video_clip_uid=operation.video_clip_uid,
+                audio_clip_uid=operation.audio_clip_uid,
+                old_start_ticks=operation.old_start_ticks,
+                old_end_ticks=operation.old_end_ticks,
+                new_end_ticks=operation.new_end_ticks,
+            )
+            requested_value = {"new_end_ticks": operation.new_end_ticks}
+        return {
+            "api_version": EDIT_PLAN_API_VERSION,
+            "plan_schema_version": parsed.schema_version,
+            "status": "ready",
+            "writes_performed": False,
+            "description": parsed.description,
+            "source": targets_result["source"],
+            "preflight": {"source_sha256_matches": True, "format_eval_valid": True},
+            "operations": [
+                {
+                    "id": operation.operation_id,
+                    "op": operation_name,
+                    "requested_target": selector,
+                    "resolved_target": dict(target),
+                    **requested_value,
+                    "resolved_values": _json_safe_values(linked_preflight),
+                }
+            ],
+            "filmora_round_trip": {"required": True, "performed": False},
+        }
+
     if not isinstance(operation, CloneTitleCardsOperation):
         raise WfpError("Unsupported typed edit operation")
     target = _resolve_template(operation.template, targets_result["title_card_templates"])
@@ -1341,6 +1715,45 @@ def apply_edit_plan(
             video_clip_uid=operation.video_clip_uid,
             audio_clip_uid=operation.audio_clip_uid,
             expected_duration_ticks=operation.expected_duration_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, MoveLinkedAvPairOperation):
+        writer_result = move_linked_av_pair(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            old_start_ticks=operation.old_start_ticks,
+            old_end_ticks=operation.old_end_ticks,
+            new_start_ticks=operation.new_start_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, TrimLinkedAvPairStartOperation):
+        writer_result = trim_linked_av_pair_start(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            old_start_ticks=operation.old_start_ticks,
+            old_end_ticks=operation.old_end_ticks,
+            new_start_ticks=operation.new_start_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, TrimLinkedAvPairEndOperation):
+        writer_result = trim_linked_av_pair_end(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            old_start_ticks=operation.old_start_ticks,
+            old_end_ticks=operation.old_end_ticks,
+            new_end_ticks=operation.new_end_ticks,
             expected_source_sha256=parsed.source_sha256,
         )
         created_cards = []

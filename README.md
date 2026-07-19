@@ -132,7 +132,7 @@ The tools can currently:
 - explain a strict, versioned edit plan without writing;
 - apply proven title-card cloning, equal-serialization-length title replacement,
   existing Rotation replacement, and the exact linked transition operations
-  through declarative edit-plan API version 3;
+  through the declarative edit-plan API;
 - replace one already-present video-clip Rotation value with a source-aware audit;
 - change or remove one already-present linked Dissolve/audio-fade pair with a
   source-aware audit;
@@ -140,15 +140,16 @@ The tools can currently:
   declared project duration, rejecting same-track collisions and auditing the
   exact four placement fields;
 - shorten either edge of one transition-free, forward 1x linked A/V pair while
-  auditing the matching timeline, source, and decimal speed-offset fields.
+  auditing the matching timeline, source, and decimal speed-offset fields;
+- discover, explain, and apply those linked A/V moves and trims through
+  declarative edit-plan API/schema version 4.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
 before it should be trusted for production editing.
 
-The linked A/V move and edge trims are currently guarded Python primitives, not
-edit-plan operations. API/schema version 3 remains immutable; promotion requires
-a future versioned schema after broader fixture coverage.
+Published schemas 1 through 3 remain immutable. Schema version 4 adds the three
+linked A/V operations without changing the earlier contracts.
 
 ## Related work
 

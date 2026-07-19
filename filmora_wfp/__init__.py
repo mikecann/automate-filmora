@@ -20,6 +20,9 @@ from .edit_plan import (
     ReplaceClipRotationOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
+    MoveLinkedAvPairOperation,
+    TrimLinkedAvPairStartOperation,
+    TrimLinkedAvPairEndOperation,
     apply_edit_plan,
     edit_plan_schema,
     explain_edit_plan,
@@ -71,6 +74,9 @@ __all__ = [
     "ReplaceClipRotationOperation",
     "ReplaceLinkedTransitionDurationOperation",
     "RemoveLinkedTransitionOperation",
+    "MoveLinkedAvPairOperation",
+    "TrimLinkedAvPairStartOperation",
+    "TrimLinkedAvPairEndOperation",
     "EditPlan",
     "EditPlanApplicationResult",
     "EditPlanExplanation",
@@ -117,4 +123,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.4.2"
+__version__ = "0.5.0"

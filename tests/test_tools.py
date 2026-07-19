@@ -168,7 +168,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
             digest = project_sha256(source)
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 3)
+            self.assertEqual(targets["api_version"], 4)
             self.assertEqual(
                 targets["rotation_targets"][0]["selector"],
                 {"clip_uid": "video-source-clip", "rotation": "10.0"},
@@ -660,6 +660,112 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     new_start_ticks=60_000_000,
                 )
 
+    def test_v4_edit_plan_discovers_explains_and_applies_linked_av_operations(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+            speed_param = json.dumps(
+                {
+                    "Version": 3,
+                    "ParameterType": 0,
+                    "keyframeSets": [
+                        {"_time": 0.0, "_value": 1.0},
+                        {"_time": 2.0, "_value": 1.0},
+                    ],
+                    "_totalTime": 2.0,
+                },
+                separators=(",", ":"),
+            )
+
+            def add_linked_pair(timeline):
+                timeline["resources"].append(
+                    {"sourceUuid": "linked-source", "filename": "file:///fixture.mov"}
+                )
+                common = {
+                    "sourceUuid": "linked-source",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "inPoint": 0,
+                    "outPoint": 20_000_000,
+                    "speed": {
+                        "offset": 0.0,
+                        "offsetEnd": 2.0,
+                        "reverse": False,
+                        "speedParam": speed_param,
+                    },
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(
+                    {**common, "type": 2, "thisUId": "linked-audio"}
+                )
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {**common, "type": 1, "thisUId": "linked-video"}
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_linked_pair)
+            source_before = source.read_bytes()
+            selector = {
+                "video_clip_uid": "linked-video",
+                "audio_clip_uid": "linked-audio",
+                "start_ticks": 40_000_000,
+                "end_ticks": 60_000_000,
+            }
+            targets = list_edit_targets(source)
+            self.assertEqual(targets["api_version"], 4)
+            self.assertEqual(len(targets["linked_av_targets"]), 1)
+            self.assertEqual(targets["linked_av_targets"][0]["selector"], selector)
+            self.assertEqual(
+                targets["linked_av_targets"][0]["capabilities"],
+                [
+                    "move_linked_av_pair",
+                    "trim_linked_av_pair_start",
+                    "trim_linked_av_pair_end",
+                ],
+            )
+
+            cases = [
+                ("move_linked_av_pair", "new_start_ticks", 70_000_000, 4),
+                ("trim_linked_av_pair_start", "new_start_ticks", 50_000_000, 6),
+                ("trim_linked_av_pair_end", "new_end_ticks", 50_000_000, 6),
+            ]
+            for operation_name, replacement_field, replacement, change_count in cases:
+                plan = {
+                    "schema_version": 4,
+                    "source": {"sha256": project_sha256(source)},
+                    "operations": [
+                        {
+                            "op": operation_name,
+                            "target": selector,
+                            replacement_field: replacement,
+                        }
+                    ],
+                }
+                explanation = explain_edit_plan(source, plan)
+                self.assertEqual(explanation["status"], "ready")
+                self.assertFalse(explanation["writes_performed"])
+                self.assertEqual(explanation["operations"][0]["op"], operation_name)
+                json.dumps(explanation)
+
+                output = root / (operation_name + ".wfp")
+                result = apply_edit_plan(source, output, plan)
+                self.assertTrue(result["verification"]["source_aware_audit_valid"])
+                json.dumps(result)
+                self.assertEqual(len(diff_projects(source, output)["json_changes"]), change_count)
+
+            self.assertEqual(source.read_bytes(), source_before)
+            rejected = {
+                "schema_version": 3,
+                "source": {"sha256": project_sha256(source)},
+                "operations": [
+                    {
+                        "op": "move_linked_av_pair",
+                        "target": selector,
+                        "new_start_ticks": 70_000_000,
+                    }
+                ],
+            }
+            with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
+                load_edit_plan(rejected)
+
     def test_replace_existing_clip_rotation_changes_only_selected_value(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -849,7 +955,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 3)
+            self.assertEqual(targets["api_version"], 4)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -912,11 +1018,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema_v2["$defs"]["replaceTitleTextOperation"]["properties"]["op"]["const"],
                 "replace_title_text",
             )
-            schema_v3 = edit_plan_schema()
+            schema_v3 = edit_plan_schema(3)
             self.assertEqual(schema_v3["properties"]["schema_version"]["const"], 3)
             self.assertEqual(
                 schema_v3["$defs"]["replaceClipRotationOperation"]["properties"]["op"]["const"],
                 "replace_clip_rotation",
+            )
+            schema_v4 = edit_plan_schema()
+            self.assertEqual(schema_v4["properties"]["schema_version"]["const"], 4)
+            self.assertEqual(
+                schema_v4["$defs"]["moveLinkedAvPairOperation"]["properties"]["op"]["const"],
+                "move_linked_av_pair",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -928,7 +1040,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 3)
+            self.assertEqual(explanation["api_version"], 4)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -1067,7 +1179,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 3)
+            self.assertEqual(error["api_version"], 4)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 

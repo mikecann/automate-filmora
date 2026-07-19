@@ -221,9 +221,8 @@ gap, saved it to a new path, and reopened it. The Filmora-saved copy retained
 both linked clips at `34,800,000` through `60,000,000` and passed every format
 probe.
 
-This operation is exported as a guarded Python primitive but is deliberately
-absent from edit-plan schema version 3. Published schemas are immutable, and one
-accepted fixture is not enough reason to rush an API version 4.
+This operation remains available as a guarded Python primitive and is also
+exposed by edit-plan schema version 4. Schema version 3 remains immutable.
 
 ## Existing linked A/V end-trim acceptance
 
@@ -246,8 +245,8 @@ the shortened linked pair, saved it to another path, and reopened it. The
 Filmora-saved copy retained `tlEnd: 50,000,000`, `outPoint: 40,000,000`, and
 `speed.offsetEnd: 4.0` on both clips and passed every format probe.
 
-Like movement, end trim is currently a guarded Python primitive and remains out
-of immutable edit-plan schema version 3.
+Like movement, end trim remains a guarded Python primitive and is exposed by
+edit-plan schema version 4. Schema version 3 remains immutable.
 
 ## Existing linked A/V start-trim acceptance
 
@@ -266,15 +265,25 @@ shortened pair, saved it, and reopened it. The Filmora-saved copy retained exact
 `inPoint: 34,800,000`, and passed every format probe.
 
 The start writer enforces the same forward constant 1x, matching-pair,
-transition-free, and positive-range restrictions as the end writer. It is also
-Python-only and absent from edit-plan schema version 3.
+transition-free, and positive-range restrictions as the end writer. Edit-plan
+schema version 4 exposes it without changing schema version 3.
+
+## Linked A/V edit-plan API milestone
+
+API version 4 and plan schema version 4 promote the three Filmora-accepted
+linked A/V writers. `edit-targets` returns only unambiguous transition-free
+pairs with exact source and timeline bounds. Every pair supports guarded moves;
+only pairs matching the audited forward constant-1x speed predicate advertise
+start and end trims. Dry runs execute the same operation-specific preflight as
+the writer, and application still writes a new path and runs its source-aware
+audit. Synthetic coverage verifies the exact four-field move and both six-field
+trim diffs. Schemas 1 through 3 remain byte-for-byte unchanged and supported.
 
 The next controlled Filmora batch should evaluate:
 
 1. split a linked A/V pair and verify every regenerated identifier;
 2. repeat linked movement and trimming on more sources and track layouts;
-3. evaluate whether movement and both edge trims have enough coverage for an
-   edit-plan API/schema version 4.
+3. add a single-operation batch format only if a real workflow needs it.
 
 Each operation stays absent from the public plan schema until its generated copy
 passes the writer acceptance gate above. Track operations and new effect

@@ -328,6 +328,19 @@ def _print_edit_targets(result: Dict[str, Any]) -> None:
                 selector.get("duration_ticks"),
             )
         )
+    linked_av_targets = result.get("linked_av_targets") or []
+    print("Editable linked A/V pairs: {0}".format(len(linked_av_targets)))
+    for target in linked_av_targets:
+        selector = target.get("selector") or {}
+        print(
+            "  {0} + {1}: {2}-{3} ticks ({4})".format(
+                selector.get("video_clip_uid"),
+                selector.get("audio_clip_uid"),
+                selector.get("start_ticks"),
+                selector.get("end_ticks"),
+                ", ".join(target.get("capabilities") or []),
+            )
+        )
 
 
 def _print_plan_explanation(result: Dict[str, Any]) -> None:
