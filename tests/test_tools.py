@@ -2740,6 +2740,35 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertEqual(text_changes[0]["before"], "Before")
             self.assertEqual(text_changes[0]["after"], "After")
 
+    def test_diff_expands_curve_color_json_below_generic_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_project(root / "base.wfp")
+
+            def add_curve(value):
+                def mutate(timeline):
+                    clip = timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][0]
+                    payload = json.dumps(
+                        {"points": [{"pos": 180.0, "val": value}]},
+                        separators=(",", ":"),
+                    )
+                    clip["curve_color"] = [{"ICurveColor::Hue2Sat": payload}]
+                return mutate
+
+            before = _rewrite_main_timeline(base, root / "before.wfp", add_curve(1.5))
+            after = _rewrite_main_timeline(base, root / "after.wfp", add_curve(1.75))
+            result = diff_projects(before, after, member_filter="timeline.wesproj")
+            curve_changes = [
+                change
+                for change in result["json_changes"]
+                if change["path"].endswith(
+                    "ICurveColor::Hue2Sat.$embedded_json.points[0].val"
+                )
+            ]
+            self.assertEqual(len(curve_changes), 1)
+            self.assertEqual(curve_changes[0]["before"], 1.5)
+            self.assertEqual(curve_changes[0]["after"], 1.75)
+
     def test_unpack_rejects_path_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

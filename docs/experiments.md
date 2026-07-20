@@ -73,6 +73,13 @@ scalars, and one repeated luma Curves midpoint. Curves serialize the visible
 knot plus two derived Bezier-control arrays, so they remain read-only until the
 handle derivation is proven. HSL section toggles and non-Red saturation and
 luminance remain open.
+A Hue-vs-Sat midpoint repeat then isolated the separate CurveColor payload. Its
+array declares all six Hue/Saturation curve modes; only the selected mode's
+JSON string changed. Other mode-specific point/control derivations remain open.
+Color Wheels then confirmed the `lift`, `gamma`, and `gain` parameter families
+for Shadows, Midtones, and Highlights. A red-component edit changed red,
+saturation, and derived lightness together, so wheel values remain read-only
+until the conversion model is complete.
 
 Still open:
 

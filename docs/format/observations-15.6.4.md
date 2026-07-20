@@ -113,6 +113,8 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | HSL Red scalar sweep | repeat Red Hue, Saturation, and Luminance from 10 to 20 | changed `Red_hueVal`, `Red_satVal`, and `Red_brightnessVal` independently |
 | HSL channel sweep | repeat Hue for Orange, Yellow, Green, Cyan, Blue, Purple, and Magenta | confirmed all serialized prefixes; cyan is stored as `Aqua_hueVal` |
 | luma Curves repeat | move one midpoint upward | changed `yKnots` plus both derived Bezier-control arrays under the `rgbcurve` effect |
+| Hue-vs-Sat Curves repeat | move one midpoint upward | changed only the `ICurveColor::Hue2Sat` JSON payload under `video/effect/curvecolor`; all six curve-mode payloads were identified |
+| Color Wheels red-component sweep | repeat Shadows, Midtones, and Highlights red from 0.25 to 0.50 | confirmed `lift`, `gamma`, and `gain` families; each visible red edit also changed derived saturation and lightness |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |

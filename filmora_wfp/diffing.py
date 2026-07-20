@@ -29,10 +29,17 @@ def _expand_embedded(value: Any, key: Optional[str] = None) -> Any:
         return {child_key: _expand_embedded(child, child_key) for child_key, child in value.items()}
     if isinstance(value, list):
         return [_expand_embedded(child) for child in value]
-    if key in EMBEDDED_JSON_KEYS and isinstance(value, str):
+    if isinstance(value, str) and (
+        key in EMBEDDED_JSON_KEYS or value.lstrip().startswith(("{", "["))
+    ):
         try:
             decoded = json.loads(value)
         except json.JSONDecodeError:
+            return value
+        # Filmora also nests JSON below generic keys such as fxParam.unValue
+        # and ICurveColor::* entries. Expanding any valid JSON object/array
+        # keeps controlled diffs useful without assigning semantics to it.
+        if key not in EMBEDDED_JSON_KEYS and not isinstance(decoded, (dict, list)):
             return value
         return {"$embedded_json": _expand_embedded(decoded)}
     return value

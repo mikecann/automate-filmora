@@ -256,6 +256,47 @@ and `b` prefixes. This means curve automation must reproduce Filmora's handle
 derivation rather than changing only the visible knot. No curve writer is
 authorized yet.
 
+### Controlled Hue/Saturation Curves change
+
+The lower Curves panel is a separate effect with ID
+`video/effect/curvecolor`, display `CurveColor`, and a `curve_color` array. It
+serializes six named JSON-string curve objects:
+
+```text
+ICurveColor::Hue2Hue
+ICurveColor::Hue2Sat
+ICurveColor::Hue2Lum
+ICurveColor::Lum2Sat
+ICurveColor::Sat2Sat
+ICurveColor::Sat2Lum
+```
+
+Moving one Hue-vs-Sat midpoint upward changed only the `Hue2Sat` object. The
+point stayed at hue position `180.0`; its value changed from `1.63736260` to
+`1.83516479`, and the matching left/right control values changed with it. The
+object also declares explicit X/Y bounds, steps, selected point index, and
+control arrays. This repeat proves the routing and payload shape, but not every
+mode's point/control derivation, so no writer is authorized.
+
+### Controlled Color Wheels changes
+
+Color Wheels use effect ID `5C720A04-AC9C-4DF3-811D-EDB3C1B0D14A`, display
+`ColorWheel`. Repeating the visible red numeric component from 0.25 to 0.50 on
+each wheel changed three parameters per wheel:
+
+| Wheel | Prefix | Changed parameters |
+| --- | --- | --- |
+| Shadows | `lift` | `lift_red`, `lift_saturation`, `lift_lightness` |
+| Midtones | `gamma` | `gamma_red`, `gamma_saturation`, `gamma_lightness` |
+| Highlights | `gain` | `gain_red`, `gain_saturation`, `gain_lightness` |
+
+For all three, the visible red value and stored red/saturation values matched
+directly, while lightness changed from `0.0833333358168602` to
+`0.1666666716337204`. This proves that Filmora derives multiple stored wheel
+parameters from one visible component; they are not independent RGB scalars.
+Green, blue, the outer luminance controls, negative values, and the full
+conversion model remain open. No writer is authorized.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from
