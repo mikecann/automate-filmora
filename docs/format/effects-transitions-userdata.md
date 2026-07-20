@@ -176,6 +176,48 @@ The second keyframe remained a 1.0 sentinel at source time 5.0. The meaning and
 generation algorithm for the `MD5` value are not yet proven, so uniform-speed
 writing is not authorized despite the surrounding duration math being clear.
 
+### Controlled pitch, reverse, and speed-ramp changes
+
+Turning Maintain Pitch off on the normalized linked pair added
+`speedWithPitch: true` to only the type-2 audio clip. The inverted naming is
+important: absence displayed as Maintain Pitch on, while `true` displayed it
+off and lets pitch follow speed. No other semantic field changed.
+
+Turning Reverse Speed on set `speed.reverse: true` on both linked clips. Because
+the visual clip already carried a one-second Vortex In animation, Filmora also
+mirrored every visual animation map across the 3.3333333-second clip. The ramp
+became an equivalent Vortex Out at seconds 2.3333333 to 3.3333333, and opacity
+used the corresponding 23,333,333 to 33,333,333 tick range. All affected
+derivatives changed sign and all animation MD5 values were regenerated.
+Reverse is therefore not safely modelled as a lone Boolean when animation is
+present.
+
+Applying a Speed Ramping preset warns that it will override Uniform Speed. The
+controlled preset saves confirmed that it then:
+
+- clears reverse and the explicit `speedWithPitch` field;
+- writes the same `speed.speedParam` curve to linked audio and video;
+- uses `Version: 3`, `ParameterType: 0`, and `Interpolation: 9`;
+- changes both clips' `tlEnd` and `outPoint` to the curve-integrated duration;
+- retimes every existing visual animation keyframe to preserve source-relative
+  placement.
+
+On the five-second source, the stock curves were:
+
+| Preset | `_time:_value` points | Result ticks |
+| --- | --- | --- |
+| Montage | `0:0.9`, `0.5:0.9`, `2.5:6.8`, `3.25:0.3`, `4:1`, `5:1` | `34401502` |
+| Hero | `0:1`, `0.25:1`, `1.75:5.5`, `2.25:0.5`, `2.75:0.5`, `3.25:5.5`, `4.75:1`, `5:1` | `27564103` |
+| Bullet Time | `0:5.2`, `2:5.2`, `2.3:0.5`, `2.7:0.5`, `3:5.2`, `5:5.2` | `17797572` |
+| Jumper | `0:0.6`, `2.15:0.6`, `2.5:6`, `2.85:0.6`, `5:0.6` | `73787878` |
+| Flash In | `0:5.2`, `2:5.2`, `3:1`, `5:1` | `27071961` |
+| Flash Out | `0:1`, `2:1`, `3:5.2`, `5:5.2` | `27071960` |
+
+Each point also has preset-specific left/right derivatives and the payload has
+an opaque MD5. The one-tick Flash In/Out duration difference is retained as an
+observation, not rounded away. Custom ramp editing, the Customize card, and AI
+frame-interpolation modes remain open. No speed writer is authorized.
+
 ### Controlled Basic Color temperature change
 
 Repeating Color > Basic > Temperature from 10 to 20 changed only

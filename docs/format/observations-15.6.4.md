@@ -106,6 +106,9 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | anchor X repeat | change existing Anchor Point X from 100 px to 200 px at 1280x720 | changed only `_Anchor_x` from `0.578125` to `0.65625` plus save metadata |
 | anchor Y repeat | change existing Anchor Point Y from 100 px to 200 px at 1280x720 | changed only `_Anchor_y` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
 | linked uniform speed repeat | change linked A/V from 1.25x to 1.50x with ripple edit | updated both clip ends, both serialized speed payloads, media duration, and project duration; speed-payload `MD5` generation remains opaque |
+| Maintain Pitch off | toggle off on normalized 1.50x linked pair | added `speedWithPitch: true` to only the type-2 audio clip; field naming is inverse to the UI label |
+| Reverse Speed on | reverse linked pair carrying Vortex In animation | set both `speed.reverse` flags and mirrored all visual animation keys across the clip duration |
+| stock speed ramps | independently apply Montage, Hero, Bullet Time, Jumper, Flash In, and Flash Out | mapped identical linked A/V interpolation-9 curves and curve-integrated durations; presets clear reverse/pitch mode and retime visual animation |
 | Basic Color temperature repeat | change existing Temperature from 10 to 20 | changed only AdjustColor `u_temperature` from `10.0` to `20.0` plus save metadata |
 | Basic Color scalar sweep | repeat Tint, Vibrance, Saturation, Exposure, Brightness, Contrast, Highlight, Shadow, White, and Black | each changed exactly one named AdjustColor scalar from `10.0` to `20.0` |
 | Basic Sharpen repeat | change Sharpen from 10 to 20 | changed only separate Sharpen effect parameter `amount` from `10.0` to `20.0` |
