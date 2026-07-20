@@ -19,7 +19,8 @@ actual project and Filmora build before asserting field semantics.
 - If the user requests a mutation, create a new output file and make one narrow,
   named change. Current writers cover the observed compound title-card graph,
   same-serialization-length title replacement, and replacement of an existing
-  video Rotation value, plus duration replacement or removal of the exact
+  video Rotation value and an existing audio `VolumeGain` value, plus duration
+  replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
   move that stays inside the declared project duration without same-track
   collisions, plus a shortening end trim for a transition-free forward 1x
@@ -134,8 +135,9 @@ Edit-plan schema version 4 exposes `move_linked_av_pair`,
 `trim_linked_av_pair_start`, and `trim_linked_av_pair_end`. Use only selectors
 returned in `linked_av_targets`, and respect each target's `capabilities` list.
 Schema version 5 additionally exposes `split_linked_av_pair` for targets with
-the verified link-identifier shape. Schemas 1 through 4 remain immutable and
-supported.
+the verified link-identifier shape. Schema version 6 exposes
+`replace_clip_volume_gain` only for existing parameters returned in
+`volume_gain_targets`. Schemas 1 through 5 remain immutable and supported.
 
 1. Add a targeted command that refuses identical input/output paths.
 2. Copy the input and change the minimum JSON fields.

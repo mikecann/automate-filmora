@@ -288,6 +288,29 @@ The next controlled Filmora batch should evaluate:
 Track operations and new effect insertion remain later work because their
 persistence or identifier behaviour is less certain.
 
+## Existing audio clip volume-gain acceptance
+
+The first Basic Audio volume change from the default `0.00 dB` to `3.00 dB`
+normalized the disposable audio clip by adding a `VolumeGain` parameter to its
+existing `audio/effect/volume` node and inserting a default equalizer node. That
+first-use graph change is not a writer target.
+
+Repeating the edit from the normalized save isolated the actual property. The
+`3.0` to `6.0` and `6.0` to `-3.0` saves each changed only
+`VolumeGain.fxParam.unValue`, aside from the already-classified per-save timeline
+token. The parameter uses `paramType: 2`; the UI value is in decibels.
+
+The replacement-only writer changed an existing `3.0` value to `4.0` with one
+semantic diff. Its source-aware audit and every format probe passed. Filmora
+15.6.4.11894 opened the generated copy and visibly showed `4.00 dB`, saved it to
+a new path, retained `VolumeGain: 4.0`, and reopened the saved copy.
+
+API version 6 and immutable plan schema version 6 expose
+`replace_clip_volume_gain`. Target discovery lists only audio clips containing
+exactly one existing finite `VolumeGain` parameter. It does not claim support
+for inserting a missing parameter or recreating Filmora's first-use effect
+normalization. Schemas 1 through 5 remain unchanged and supported.
+
 ## Existing linked A/V split acceptance
 
 The initial 2.48-second split was repeated from a new Filmora Save As baseline.

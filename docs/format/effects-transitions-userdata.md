@@ -63,6 +63,31 @@ This proves replacement of one existing `Rotation` parameter. It does not yet
 authorize inserting a missing Rotation parameter or changing other transform
 parameters.
 
+### Controlled audio volume-gain change
+
+On a disposable type `2` audio clip, the first Basic Audio volume change from
+`0.00 dB` to `3.00 dB` added a `VolumeGain` parameter under the existing
+`audio/effect/volume` node:
+
+```json
+{
+  "name": "VolumeGain",
+  "fxParam": {"paramType": 2, "unValue": 3.0}
+}
+```
+
+That first save also inserted a default `audio/effect/equalizer` node, so it is
+normalization evidence rather than permission to synthesize a volume graph.
+From the normalized save, changing `3.0` to `6.0` and then `6.0` to `-3.0`
+changed only `fxParam.unValue` plus the known per-save timeline token.
+
+A narrow writer changed an already-present value from `3.0` to `4.0` with one
+semantic diff. Filmora 15.6.4.11894 opened the generated copy and displayed
+`4.00 dB`; Save As retained `4.0`, all format probes passed, and the saved copy
+reopened. This proves replacement only. A default clip with no serialized
+`VolumeGain`, fades, balance, equalizer settings, and automation remain outside
+the writer contract.
+
 ## Transitions
 
 Transitions are not a separate top-level timeline list. They appear on clips as:

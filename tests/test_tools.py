@@ -18,6 +18,7 @@ from filmora_wfp import (
     WfpError,
     apply_edit_plan,
     audit_linked_av_split_copy,
+    audit_clip_volume_gain_copy,
     audit_title_text_copy,
     audit_title_card_copy,
     clone_title_cards,
@@ -35,8 +36,10 @@ from filmora_wfp import (
     preflight_linked_av_end_trim,
     preflight_linked_av_move,
     preflight_linked_av_start_trim,
+    preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
+    replace_clip_volume_gain,
     replace_linked_transition_duration,
     replace_title_text,
     remove_linked_transition,
@@ -172,7 +175,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
             digest = project_sha256(source)
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 5)
+            self.assertEqual(targets["api_version"], 6)
             self.assertEqual(
                 targets["rotation_targets"][0]["selector"],
                 {"clip_uid": "video-source-clip", "rotation": "10.0"},
@@ -714,7 +717,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 "end_ticks": 60_000_000,
             }
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 5)
+            self.assertEqual(targets["api_version"], 6)
             self.assertEqual(len(targets["linked_av_targets"]), 1)
             self.assertEqual(targets["linked_av_targets"][0]["selector"], selector)
             self.assertEqual(
@@ -876,7 +879,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 ],
             }
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 5)
+            self.assertEqual(explanation["api_version"], 6)
             self.assertFalse(explanation["writes_performed"])
             self.assertEqual(explanation["operations"][0]["op"], "split_linked_av_pair")
             self.assertEqual(explanation["operations"][0]["split_ticks"], 50_000_000)
@@ -1079,6 +1082,188 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     new_rotation=20,
                 )
 
+    def test_replace_existing_clip_volume_gain_changes_only_selected_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_volume_gain(timeline):
+                clip = {
+                    "type": 2,
+                    "thisUId": "audio-clip",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "inPoint": 0,
+                    "outPoint": 20_000_000,
+                    "effectChainList": [
+                        {
+                            "effectList": [
+                                {
+                                    "id": "audio/effect/volume",
+                                    "thisUId": "volume-effect",
+                                    "paramList": [
+                                        {
+                                            "name": "VolumeGain",
+                                            "fxParam": {"paramType": 2, "unValue": 3.0},
+                                        }
+                                    ],
+                                }
+                            ]
+                        }
+                    ],
+                }
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(clip)
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_volume_gain)
+            source_before = source.read_bytes()
+            output = root / "output.wfp"
+            result = replace_clip_volume_gain(
+                source,
+                output,
+                clip_uid="audio-clip",
+                old_volume_gain="3.0",
+                new_volume_gain="-3.0",
+                expected_source_sha256=project_sha256(source),
+            )
+
+            self.assertEqual(source.read_bytes(), source_before)
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(
+                result["audit"]["details"]["volume_gain_occurrences_changed"], 1
+            )
+            changes = diff_projects(source, output)["json_changes"]
+            self.assertEqual(len(changes), 1)
+            self.assertEqual(changes[0]["before"], 3.0)
+            self.assertEqual(changes[0]["after"], -3.0)
+            self.assertEqual(
+                preflight_clip_volume_gain(
+                    source,
+                    clip_uid="audio-clip",
+                    old_volume_gain=3,
+                    new_volume_gain=6,
+                )["matching_archive_occurrences"],
+                1,
+            )
+            self.assertTrue(
+                audit_clip_volume_gain_copy(
+                    source,
+                    output,
+                    clip_uid="audio-clip",
+                    old_volume_gain=3,
+                    new_volume_gain=-3,
+                )["valid"]
+            )
+
+            targets = list_edit_targets(source)
+            self.assertEqual(
+                targets["volume_gain_targets"][0]["selector"],
+                {"clip_uid": "audio-clip", "volume_gain": "3.0"},
+            )
+            plan = {
+                "schema_version": 6,
+                "source": {"sha256": project_sha256(source)},
+                "operations": [
+                    {
+                        "op": "replace_clip_volume_gain",
+                        "target": targets["volume_gain_targets"][0]["selector"],
+                        "new_volume_gain": "6.0",
+                    }
+                ],
+            }
+            explanation = explain_edit_plan(source, plan)
+            self.assertFalse(explanation["writes_performed"])
+            self.assertEqual(
+                explanation["operations"][0]["op"], "replace_clip_volume_gain"
+            )
+            plan_output = root / "plan-output.wfp"
+            plan_result = apply_edit_plan(source, plan_output, plan)
+            self.assertTrue(plan_result["verification"]["source_aware_audit_valid"])
+            self.assertEqual(
+                len(diff_projects(source, plan_output)["json_changes"]), 1
+            )
+
+            v5_plan = dict(plan)
+            v5_plan["schema_version"] = 5
+            with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
+                load_edit_plan(v5_plan)
+
+    def test_replace_existing_clip_volume_gain_rejects_missing_or_stale_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_audio_clip(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(
+                    {
+                        "type": 2,
+                        "thisUId": "audio-clip",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "inPoint": 0,
+                        "outPoint": 20_000_000,
+                    }
+                )
+
+            missing = _rewrite_main_timeline(base, root / "missing-source.wfp", add_audio_clip)
+            with self.assertRaisesRegex(WfpError, "exactly one existing VolumeGain"):
+                replace_clip_volume_gain(
+                    missing,
+                    root / "missing.wfp",
+                    clip_uid="audio-clip",
+                    old_volume_gain=0,
+                    new_volume_gain=3,
+                )
+
+            def add_volume_gain(timeline):
+                clip = timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][-1]
+                clip["effectChainList"] = [
+                    {
+                        "effectList": [
+                            {
+                                "id": "audio/effect/volume",
+                                "paramList": [
+                                    {"name": "VolumeGain", "fxParam": {"unValue": 3.0}}
+                                ],
+                            }
+                        ]
+                    }
+                ]
+
+            source = _rewrite_main_timeline(missing, root / "source.wfp", add_volume_gain)
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                replace_clip_volume_gain(
+                    source,
+                    root / "stale.wfp",
+                    clip_uid="audio-clip",
+                    old_volume_gain=0,
+                    new_volume_gain=6,
+                )
+
+            with self.assertRaisesRegex(WfpError, "Source fingerprint changed"):
+                replace_clip_volume_gain(
+                    source,
+                    root / "stale-hash.wfp",
+                    clip_uid="audio-clip",
+                    old_volume_gain=3,
+                    new_volume_gain=6,
+                    expected_source_sha256="0" * 64,
+                )
+
+            rejected = root / "rejected.wfp"
+            with patch(
+                "filmora_wfp.volume.audit_clip_volume_gain_copy",
+                return_value={"valid": False, "errors": ["controlled volume audit failure"]},
+            ):
+                with self.assertRaisesRegex(WfpError, "controlled volume audit failure"):
+                    replace_clip_volume_gain(
+                        source,
+                        rejected,
+                        clip_uid="audio-clip",
+                        old_volume_gain=3,
+                        new_volume_gain=6,
+                    )
+            self.assertFalse(rejected.exists())
+
     def test_replace_title_text_changes_only_equal_length_mirrors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1155,7 +1340,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 5)
+            self.assertEqual(targets["api_version"], 6)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -1230,11 +1415,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema_v4["$defs"]["moveLinkedAvPairOperation"]["properties"]["op"]["const"],
                 "move_linked_av_pair",
             )
-            schema_v5 = edit_plan_schema()
+            schema_v5 = edit_plan_schema(5)
             self.assertEqual(schema_v5["properties"]["schema_version"]["const"], 5)
             self.assertEqual(
                 schema_v5["$defs"]["splitLinkedAvPairOperation"]["properties"]["op"]["const"],
                 "split_linked_av_pair",
+            )
+            schema_v6 = edit_plan_schema()
+            self.assertEqual(schema_v6["properties"]["schema_version"]["const"], 6)
+            self.assertEqual(
+                schema_v6["$defs"]["replaceClipVolumeGainOperation"]["properties"]["op"]["const"],
+                "replace_clip_volume_gain",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -1246,7 +1437,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 5)
+            self.assertEqual(explanation["api_version"], 6)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -1385,7 +1576,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 5)
+            self.assertEqual(error["api_version"], 6)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 

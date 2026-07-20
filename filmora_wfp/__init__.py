@@ -18,6 +18,7 @@ from .edit_plan import (
     TitleCardTemplateSelector,
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
+    ReplaceClipVolumeGainOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
     MoveLinkedAvPairOperation,
@@ -69,6 +70,11 @@ from .transitions import (
     remove_linked_transition,
     replace_linked_transition_duration,
 )
+from .volume import (
+    audit_clip_volume_gain_copy,
+    preflight_clip_volume_gain,
+    replace_clip_volume_gain,
+)
 
 __all__ = [
     "WfpArchive",
@@ -78,6 +84,7 @@ __all__ = [
     "CloneTitleCardsOperation",
     "ReplaceTitleTextOperation",
     "ReplaceClipRotationOperation",
+    "ReplaceClipVolumeGainOperation",
     "ReplaceLinkedTransitionDurationOperation",
     "RemoveLinkedTransitionOperation",
     "MoveLinkedAvPairOperation",
@@ -94,6 +101,7 @@ __all__ = [
     "apply_edit_plan",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
+    "audit_clip_volume_gain_copy",
     "audit_linked_transition_duration_copy",
     "audit_linked_transition_removal_copy",
     "edit_plan_schema",
@@ -123,14 +131,16 @@ __all__ = [
     "split_linked_av_pair",
     "project_sha256",
     "preflight_clip_rotation",
+    "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
+    "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
     "survey_projects",
     "validate_project",
 ]
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
