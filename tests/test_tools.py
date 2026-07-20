@@ -21,6 +21,7 @@ from filmora_wfp import (
     audit_clip_fade_out_copy,
     audit_clip_position_copy,
     audit_clip_scale_copy,
+    audit_clip_horizontal_flip_copy,
     audit_linked_av_split_copy,
     audit_clip_volume_gain_copy,
     audit_title_text_copy,
@@ -45,6 +46,7 @@ from filmora_wfp import (
     preflight_clip_fade_out,
     preflight_clip_position,
     preflight_clip_scale,
+    preflight_clip_horizontal_flip,
     preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
@@ -52,6 +54,7 @@ from filmora_wfp import (
     replace_clip_fade_out,
     replace_clip_position,
     replace_clip_scale,
+    replace_clip_horizontal_flip,
     replace_clip_volume_gain,
     replace_linked_transition_duration,
     replace_title_text,
@@ -1278,6 +1281,75 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     old_scale_y="60",
                     new_scale_x="70",
                     new_scale_y="80",
+                )
+
+    def test_replace_existing_horizontal_flip_is_copy_only_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_flip(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "flipped-video",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "effectChainList": [{"effectList": [{
+                            "id": "video/effect/horizontal_filp",
+                            "display": "horizontal_filp",
+                            "enable": False,
+                            "userData": [
+                                {"key": 101, "size": 4, "data": "AAAAAA=="},
+                                {"key": 7, "size": 1, "data": "AQ=="},
+                            ],
+                        }]}],
+                    }
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_flip)
+            output = root / "output.wfp"
+            preflight = preflight_clip_horizontal_flip(
+                source,
+                clip_uid="flipped-video",
+                old_enabled=False,
+                new_enabled=True,
+            )
+            self.assertEqual(preflight["matching_archive_occurrences"], 1)
+            result = replace_clip_horizontal_flip(
+                source,
+                output,
+                clip_uid="flipped-video",
+                old_enabled=False,
+                new_enabled=True,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            self.assertTrue(
+                audit_clip_horizontal_flip_copy(
+                    source,
+                    output,
+                    clip_uid="flipped-video",
+                    old_enabled=False,
+                    new_enabled=True,
+                )["valid"]
+            )
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 2)
+            self.assertTrue(source.exists())
+
+            with self.assertRaisesRegex(WfpError, "must differ"):
+                preflight_clip_horizontal_flip(
+                    source,
+                    clip_uid="flipped-video",
+                    old_enabled=False,
+                    new_enabled=False,
+                )
+            with self.assertRaisesRegex(WfpError, "expected False, found True"):
+                preflight_clip_horizontal_flip(
+                    output,
+                    clip_uid="flipped-video",
+                    old_enabled=False,
+                    new_enabled=True,
                 )
 
     def test_replace_existing_clip_position_rejects_missing_stale_and_failed_audit(self) -> None:

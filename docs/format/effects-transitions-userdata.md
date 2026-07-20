@@ -103,6 +103,23 @@ with both still visible. Every format probe passed. This proves positive linked
 uniform replacement only. Missing scale parameters, zero or negative scale,
 and unlocked non-uniform Width/Height remain unsupported.
 
+### Controlled horizontal flip change
+
+Filmora spells the effect identifier `video/effect/horizontal_filp`. On an
+already-normalized visual clip, turning horizontal flip off added
+`enable: false` and changed the four-byte key-101 payload from `AQAAAA==` to
+`AAAAAA==`. Turning it back on removed `enable` and restored `AQAAAA==`.
+No other clip field changed apart from known Save As metadata.
+
+A copy-only writer reproduced the two-part off-to-on change. Filmora
+15.6.4.11894 opened and displayed the generated project, then Save As retained
+the enabled state and passed every format probe. Filmora regenerated all clip
+and effect UIDs during that Save As, so round-trip checks must follow the
+semantic effect state rather than require stable instance IDs.
+
+Only replacement of an existing, exactly-shaped horizontal-flip node is
+supported. First-use insertion and vertical flip remain unverified.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from

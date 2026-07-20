@@ -145,6 +145,9 @@ existing parameters returned in `fade_in_targets`. Schema version 8 exposes
 `fade_out_targets`. Schema version 9 exposes `replace_clip_position` only for
 existing pairs returned in `position_targets`. Schema version 10 exposes
 `replace_clip_scale` only for linked uniform pairs returned in `scale_targets`.
+For direct Python automation, `replace_clip_horizontal_flip` may toggle only an
+already-present `video/effect/horizontal_filp` node with the verified two-part
+state. It is not yet an edit-plan operation, and it must not insert the effect.
 Schemas 1 through 9 remain
 immutable and supported.
 

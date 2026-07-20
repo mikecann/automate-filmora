@@ -51,6 +51,12 @@ A/V trims at both edges. See
 [`format/observations-15.6.4.md`](format/observations-15.6.4.md) for the sanitized
 results.
 
+A later Basic-properties batch isolated existing linked uniform scale and
+horizontal flip. Horizontal flip uses the misspelled effect ID
+`video/effect/horizontal_filp` plus a two-part `enable`/key-101 state. The
+generated off-to-on copy opened and survived Save As in Filmora. Vertical flip
+and compositing opacity did not produce clean controlled pairs and remain open.
+
 Still open:
 
 - more transition modes and transition parameters;
