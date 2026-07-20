@@ -56,6 +56,8 @@ horizontal flip. Horizontal flip uses the misspelled effect ID
 `video/effect/horizontal_filp` plus a two-part `enable`/key-101 state. The
 generated off-to-on copy opened and survived Save As in Filmora. Vertical flip
 and compositing opacity did not produce clean controlled pairs and remain open.
+Uniform Corner Radius produced a clean 10%-to-20% repeat across the four named
+corner parameters; range and first-use behavior remain open.
 
 Still open:
 

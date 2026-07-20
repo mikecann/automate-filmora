@@ -120,6 +120,23 @@ semantic effect state rather than require stable instance IDs.
 Only replacement of an existing, exactly-shaped horizontal-flip node is
 supported. First-use insertion and vertical flip remain unverified.
 
+### Controlled uniform corner radius change
+
+Repeating Basic > Corner Radius from 10% to 20% changed exactly four existing
+`video/effect/transform` parameters, apart from Save As metadata:
+
+```text
+LeftTop:     10.0 -> 20.0
+RightTop:    10.0 -> 20.0
+LeftBottom:  10.0 -> 20.0
+RightBottom: 10.0 -> 20.0
+```
+
+Each parameter used `paramType: 3`, and the stored value matched the UI
+percentage. Both snapshots passed every format probe. This confirms the
+uniform repeat shape, but not the accepted range, first-use insertion, or
+independent per-corner editing. There is no writer yet.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from

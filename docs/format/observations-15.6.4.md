@@ -101,6 +101,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | position Y repeat | change existing Y from 100 px to 200 px at 1280x720 | changed only `Position_y.fxParam.unValue` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
 | linked uniform scale repeat | change existing Width/Height from 80% to 60% | changed only `Scale_x` and `Scale_y` from `80.0` to `60.0` plus save metadata |
 | horizontal flip repeat | toggle an existing horizontal flip off and back on | toggled `enable: false` and key-101 data `AAAAAA==`/`AQAAAA==`; generated copy survived Filmora Save As |
+| uniform corner radius repeat | change existing Corner Radius from 10% to 20% | changed only `LeftTop`, `RightTop`, `LeftBottom`, and `RightBottom` from `10.0` to `20.0` plus save metadata |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |
