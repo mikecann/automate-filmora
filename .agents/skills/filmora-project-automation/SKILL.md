@@ -151,6 +151,8 @@ For direct Python automation, the horizontal/vertical flip, positive uniform
 corner-radius, and Anchor Point X/Y writers may replace only already-present,
 exactly verified nodes. They are not yet edit-plan operations and must not
 insert missing parameters or effects.
+The Background Blur writer follows the same boundary: it may replace only an
+existing clip's strength and enable fields, never first-use graph insertion.
 Schemas 1 through 9 remain
 immutable and supported.
 

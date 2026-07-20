@@ -78,6 +78,11 @@ The specification is a JSON array. Each entry supplies `start_ticks`, `heading`,
 source changes while the copy is being written. It also runs a source-aware audit
 before returning. A failed audit removes the newly generated output.
 
+The low-level API also exposes `replace_clip_background_blur` for an existing
+clip's `backgroundFillBluredness` and `backgroundFillEnable` fields. It is
+copy-only and source-aware, and deliberately refuses to synthesize Filmora's
+first-use holding chains.
+
 Repeat the same audit explicitly with:
 
 ```bash
