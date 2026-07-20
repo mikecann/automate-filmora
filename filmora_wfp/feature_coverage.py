@@ -35,7 +35,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.transform", "path curve", "open", "UI inventoried only"),
     ("video.compositing", "static opacity", "open", "base-track negative control; overlay required"),
     ("video.compositing", "blend mode", "open", "overlay required"),
-    ("video.background", "blur enable and strength preset", "mapped", "enable 20 to 40 disable"),
+    ("video.background", "blur enable and strength preset", "writable", "guarded existing-field writer; Filmora sample round trip"),
     ("video.background", "other fill types and styles", "open", "custom dropdown unresolved"),
     ("video.animation", "Fade In and Fade Out presets", "mapped", "apply undo redo"),
     ("video.animation", "slide Pause Vortex and Zoom presets", "mapped", "independent matrix"),

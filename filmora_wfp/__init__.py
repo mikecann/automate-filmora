@@ -8,6 +8,11 @@ from .anchor import (
     replace_clip_anchor,
 )
 from .archive import WfpArchive, WfpError
+from .background_blur import (
+    audit_clip_background_blur_copy,
+    preflight_clip_background_blur,
+    replace_clip_background_blur,
+)
 from .audio_fade import (
     audit_clip_fade_in_copy,
     preflight_clip_fade_in,

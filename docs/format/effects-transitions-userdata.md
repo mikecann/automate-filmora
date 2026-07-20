@@ -464,7 +464,10 @@ observed off state and the last configuration survives.
 
 Other Background types, Blur Style, custom blur strength, color/image payloads,
 and Apply to All remain open. Existing-field replacement is structurally
-simple, but no Background writer has passed a Filmora round trip.
+simple. The guarded `replace_clip_background_blur` writer now supports an
+existing clip's strength and enable state without synthesizing first-use
+holding chains; its generated copy passed format evaluation and the Filmora
+sample round-trip gate.
 
 ### Controlled audio volume-gain change
 
