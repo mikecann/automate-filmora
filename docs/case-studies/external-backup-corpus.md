@@ -125,3 +125,10 @@ effect families to the research inventory that were not present in the AI Tips
 fixture: `ColorBlur`, `Allpurpose Position`, and `Text Dropout`. It also exposed
 additional Push-family transition IDs. These are corpus observations only; the
 new effect payloads have not had controlled UI edits and remain non-writable.
+
+The newly observed typed fields were `ColorBlur.uEclosion` (enum),
+`uEnhance`, `RBlurIntension`, and `BBlurIntension` (scalars), `Text Dropout`
+`Speed` and `Scale` (scalars), and `Allpurpose Position.position_y`, `rotate`,
+and `scale` (scalars). Allpurpose Position also carries opaque keyframe JSON,
+so replacing its visible defaults would not be safe without reproducing the
+derived curves and payload checksums.
