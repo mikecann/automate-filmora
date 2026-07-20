@@ -62,7 +62,9 @@ corner parameters. Boundary probes later confirmed positive 1–100 replacement,
 while zero removes the quartet. A guarded 100-to-75 copy survived Filmora Save
 As; first-use and per-corner editing remain open.
 Anchor Point X and Y produced clean 100-to-200-pixel repeats using the same
-resolution conversion as Position. A linked uniform-speed 1.25x-to-1.50x
+resolution conversion as Position. A guarded paired writer then generated a
+200-to-100-pixel copy that survived Filmora Save As. First-use insertion and
+pixel-input bounds remain open. A linked uniform-speed 1.25x-to-1.50x
 repeat mapped the paired clip bounds and embedded speed payload, but its opaque
 `MD5` generation still blocks a writer.
 An existing vertical-flip node then produced the same clean two-part toggle as

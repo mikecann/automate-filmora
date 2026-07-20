@@ -30,7 +30,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.transform", "rotation", "writable", "edit-plan schema 3"),
     ("video.transform", "horizontal flip", "writable", "direct guarded writer"),
     ("video.transform", "vertical flip", "writable", "direct guarded writer"),
-    ("video.transform", "anchor point X and Y", "mapped", "pixel conversion repeat"),
+    ("video.transform", "anchor point X and Y", "writable", "direct guarded writer"),
     ("video.transform", "uniform corner radius", "writable", "direct guarded writer"),
     ("video.transform", "path curve", "open", "UI inventoried only"),
     ("video.compositing", "static opacity", "open", "base-track negative control; overlay required"),

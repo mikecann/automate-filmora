@@ -1,6 +1,12 @@
 """Evidence-driven tools for Wondershare Filmora project files."""
 
 from .analysis import inspect_project, list_titles, validate_project
+from .anchor import (
+    audit_clip_anchor_copy,
+    normalized_anchor,
+    preflight_clip_anchor,
+    replace_clip_anchor,
+)
 from .archive import WfpArchive, WfpError
 from .audio_fade import (
     audit_clip_fade_in_copy,
@@ -144,6 +150,7 @@ __all__ = [
     "TitleCardTemplateSelector",
     "apply_edit_plan",
     "audit_clip_fade_in_copy",
+    "audit_clip_anchor_copy",
     "audit_clip_corner_radius_copy",
     "audit_clip_fade_out_copy",
     "audit_clip_position_copy",
@@ -182,6 +189,7 @@ __all__ = [
     "split_linked_av_pair",
     "project_sha256",
     "preflight_clip_rotation",
+    "preflight_clip_anchor",
     "preflight_clip_corner_radius",
     "preflight_clip_fade_in",
     "preflight_clip_fade_out",
@@ -194,6 +202,7 @@ __all__ = [
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
+    "replace_clip_anchor",
     "replace_clip_corner_radius",
     "replace_clip_fade_in",
     "replace_clip_fade_out",
@@ -207,6 +216,7 @@ __all__ = [
     "survey_projects",
     "validate_project",
     "normalized_position",
+    "normalized_anchor",
 ]
 
-__version__ = "0.13.2"
+__version__ = "0.13.3"

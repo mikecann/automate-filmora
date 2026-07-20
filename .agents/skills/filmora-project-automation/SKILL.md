@@ -21,8 +21,8 @@ actual project and Filmora build before asserting field semantics.
   same-serialization-length title replacement, and replacement of an existing
   video Rotation value, an existing video Position X/Y pair, an existing linked
   uniform video Scale X/Y pair, an existing horizontal or vertical flip node,
-  an existing positive uniform corner-radius quartet, an existing audio
-  `VolumeGain` value, and an existing
+  an existing positive uniform corner-radius quartet, an existing Anchor Point
+  X/Y pair, an existing audio `VolumeGain` value, and an existing
   positive audio `FadeInTime` or `FadeOutTime` value, plus duration
   replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
@@ -147,9 +147,10 @@ existing parameters returned in `fade_in_targets`. Schema version 8 exposes
 `fade_out_targets`. Schema version 9 exposes `replace_clip_position` only for
 existing pairs returned in `position_targets`. Schema version 10 exposes
 `replace_clip_scale` only for linked uniform pairs returned in `scale_targets`.
-For direct Python automation, `replace_clip_horizontal_flip` may toggle only an
-already-present `video/effect/horizontal_filp` node with the verified two-part
-state. It is not yet an edit-plan operation, and it must not insert the effect.
+For direct Python automation, the horizontal/vertical flip, positive uniform
+corner-radius, and Anchor Point X/Y writers may replace only already-present,
+exactly verified nodes. They are not yet edit-plan operations and must not
+insert missing parameters or effects.
 Schemas 1 through 9 remain
 immutable and supported.
 

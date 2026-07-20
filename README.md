@@ -164,6 +164,8 @@ The tools can currently:
 - replace one already-present positive uniform corner-radius quartet within the
   verified 1–100 range through a guarded Python writer. Zero-removal remains a
   separate unsupported operation.
+- replace one already-present Anchor Point X/Y pair from Filmora pixel values
+  through the same resolution-aware conversion used by Position.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

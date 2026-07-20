@@ -18,6 +18,7 @@ from filmora_wfp import (
     WfpError,
     apply_edit_plan,
     audit_clip_fade_in_copy,
+    audit_clip_anchor_copy,
     audit_clip_corner_radius_copy,
     audit_clip_fade_out_copy,
     audit_clip_position_copy,
@@ -41,10 +42,12 @@ from filmora_wfp import (
     map_project,
     move_linked_av_pair,
     normalized_position,
+    normalized_anchor,
     preflight_linked_av_end_trim,
     preflight_linked_av_move,
     preflight_linked_av_start_trim,
     preflight_clip_fade_in,
+    preflight_clip_anchor,
     preflight_clip_corner_radius,
     preflight_clip_fade_out,
     preflight_clip_position,
@@ -54,6 +57,7 @@ from filmora_wfp import (
     preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
+    replace_clip_anchor,
     replace_clip_corner_radius,
     replace_clip_fade_in,
     replace_clip_fade_out,
@@ -1528,6 +1532,79 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     clip_uid="rounded-video",
                     old_radius="20",
                     new_radius="101",
+                )
+
+    def test_replace_existing_anchor_pair_is_copy_only_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+            old_x, old_y = normalized_anchor(100, 100, 1920, 1080)
+
+            def add_anchor(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "anchored-video",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "effectChainList": [{"effectList": [{
+                            "id": "video/effect/transform",
+                            "paramList": [
+                                {
+                                    "name": "_Anchor_x",
+                                    "fxParam": {"paramType": 3, "unValue": float(old_x)},
+                                },
+                                {
+                                    "name": "_Anchor_y",
+                                    "fxParam": {"paramType": 3, "unValue": float(old_y)},
+                                },
+                            ],
+                        }]}],
+                    }
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_anchor)
+            output = root / "output.wfp"
+            preflight = preflight_clip_anchor(
+                source,
+                clip_uid="anchored-video",
+                old_anchor_x=old_x,
+                old_anchor_y=old_y,
+                new_x_pixels=200,
+                new_y_pixels=200,
+            )
+            result = replace_clip_anchor(
+                source,
+                output,
+                clip_uid="anchored-video",
+                old_anchor_x=old_x,
+                old_anchor_y=old_y,
+                new_x_pixels=200,
+                new_y_pixels=200,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            self.assertTrue(
+                audit_clip_anchor_copy(
+                    source,
+                    output,
+                    clip_uid="anchored-video",
+                    old_anchor_x=old_x,
+                    old_anchor_y=old_y,
+                    new_anchor_x=preflight["new_anchor_x"],
+                    new_anchor_y=preflight["new_anchor_y"],
+                )["valid"]
+            )
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 2)
+            self.assertTrue(source.exists())
+            with self.assertRaisesRegex(WfpError, "must differ"):
+                preflight_clip_anchor(
+                    output,
+                    clip_uid="anchored-video",
+                    old_anchor_x=preflight["new_anchor_x"],
+                    old_anchor_y=preflight["new_anchor_y"],
+                    new_x_pixels=200,
+                    new_y_pixels=200,
                 )
 
     def test_replace_existing_clip_position_rejects_missing_stale_and_failed_audit(self) -> None:

@@ -172,9 +172,13 @@ stored Anchor X = 0.5 + pixels / timeline width
 stored Anchor Y = 0.5 - pixels / timeline height
 ```
 
-Both repeat snapshots passed every format probe. Existing-pair replacement is
-structurally understood; insertion and keyframed anchor points remain
-unsupported, and no writer has yet passed the Filmora round-trip gate.
+Both repeat snapshots passed every format probe. A guarded copy-only writer now
+replaces an existing complete X/Y pair using the source project's declared
+resolution and Filmora's float32 normalization. A generated 200-to-100 pair
+opened in Filmora 15.6.4.11894; Save As retained `_Anchor_x = 0.578125` and
+`_Anchor_y = 0.3611111044883728` and passed every format probe. First-use
+insertion, accepted pixel-input bounds, and keyframed anchor points remain
+unsupported.
 
 ### Controlled linked uniform speed change
 

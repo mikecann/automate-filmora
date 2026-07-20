@@ -103,8 +103,8 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | horizontal flip repeat | toggle an existing horizontal flip off and back on | toggled `enable: false` and key-101 data `AAAAAA==`/`AQAAAA==`; generated copy survived Filmora Save As |
 | vertical flip repeat | toggle an existing vertical flip off and back on | same two-part state as horizontal under `video/effect/vertical_filp`; guarded generated copy survived Filmora Save As; insertion remains unverified |
 | uniform corner radius repeat and boundaries | change 10% to 20%, then probe 0, -1, 99, and 100 | four named values store positive 1–100 directly; zero removes the quartet; guarded 100-to-75 copy survived Filmora Save As |
-| anchor X repeat | change existing Anchor Point X from 100 px to 200 px at 1280x720 | changed only `_Anchor_x` from `0.578125` to `0.65625` plus save metadata |
-| anchor Y repeat | change existing Anchor Point Y from 100 px to 200 px at 1280x720 | changed only `_Anchor_y` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
+| anchor X repeat | change existing Anchor Point X from 100 px to 200 px at 1280x720 | changed only `_Anchor_x` from `0.578125` to `0.65625`; guarded paired generated copy survived Filmora Save As |
+| anchor Y repeat | change existing Anchor Point Y from 100 px to 200 px at 1280x720 | changed only `_Anchor_y` from `0.3611111044883728` to `0.2222222238779068`; paired writer uses the same resolution conversion |
 | linked uniform speed repeat | change linked A/V from 1.25x to 1.50x with ripple edit | updated both clip ends, both serialized speed payloads, media duration, and project duration; speed-payload `MD5` generation remains opaque |
 | Maintain Pitch off | toggle off on normalized 1.50x linked pair | added `speedWithPitch: true` to only the type-2 audio clip; field naming is inverse to the UI label |
 | Reverse Speed on | reverse linked pair carrying Vortex In animation | set both `speed.reverse` flags and mirrored all visual animation keys across the clip duration |
