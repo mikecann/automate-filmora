@@ -20,7 +20,8 @@ actual project and Filmora build before asserting field semantics.
   named change. Current writers cover the observed compound title-card graph,
   same-serialization-length title replacement, and replacement of an existing
   video Rotation value, an existing video Position X/Y pair, an existing linked
-  uniform video Scale X/Y pair, an existing audio `VolumeGain` value, and an existing
+  uniform video Scale X/Y pair, an existing horizontal or vertical flip node, an
+  existing audio `VolumeGain` value, and an existing
   positive audio `FadeInTime` or `FadeOutTime` value, plus duration
   replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V

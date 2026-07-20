@@ -64,6 +64,11 @@ from .horizontal_flip import (
     preflight_clip_horizontal_flip,
     replace_clip_horizontal_flip,
 )
+from .vertical_flip import (
+    audit_clip_vertical_flip_copy,
+    preflight_clip_vertical_flip,
+    replace_clip_vertical_flip,
+)
 from .linked_av import (
     audit_linked_av_end_trim_copy,
     audit_linked_av_move_copy,
@@ -138,6 +143,7 @@ __all__ = [
     "audit_clip_position_copy",
     "audit_clip_scale_copy",
     "audit_clip_horizontal_flip_copy",
+    "audit_clip_vertical_flip_copy",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
@@ -175,6 +181,7 @@ __all__ = [
     "preflight_clip_position",
     "preflight_clip_scale",
     "preflight_clip_horizontal_flip",
+    "preflight_clip_vertical_flip",
     "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
@@ -185,6 +192,7 @@ __all__ = [
     "replace_clip_position",
     "replace_clip_scale",
     "replace_clip_horizontal_flip",
+    "replace_clip_vertical_flip",
     "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
@@ -193,4 +201,4 @@ __all__ = [
     "normalized_position",
 ]
 
-__version__ = "0.13.0"
+__version__ = "0.13.1"

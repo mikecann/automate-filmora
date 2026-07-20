@@ -29,7 +29,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.transform", "uniform scale", "writable", "edit-plan schema 10"),
     ("video.transform", "rotation", "writable", "edit-plan schema 3"),
     ("video.transform", "horizontal flip", "writable", "direct guarded writer"),
-    ("video.transform", "vertical flip", "mapped", "controlled off and on repeat"),
+    ("video.transform", "vertical flip", "writable", "direct guarded writer"),
     ("video.transform", "anchor point X and Y", "mapped", "pixel conversion repeat"),
     ("video.transform", "uniform corner radius", "mapped", "10 to 20 repeat"),
     ("video.transform", "path curve", "open", "UI inventoried only"),

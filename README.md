@@ -158,8 +158,9 @@ The tools can currently:
   second halves' clip/effect IDs and shared opaque link ID;
 - discover, explain, and apply linked A/V moves, trims, and guarded splits
   through the declarative edit-plan API.
-- replace one already-present horizontal-flip effect state through the Python
-  copy-only writer. Declarative edit-plan exposure is intentionally pending.
+- replace one already-present horizontal- or vertical-flip effect state through
+  a Python copy-only writer. Declarative edit-plan exposure is intentionally
+  pending.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

@@ -54,8 +54,9 @@ results.
 A later Basic-properties batch isolated existing linked uniform scale and
 horizontal flip. Horizontal flip uses the misspelled effect ID
 `video/effect/horizontal_filp` plus a two-part `enable`/key-101 state. The
-generated off-to-on copy opened and survived Save As in Filmora. Vertical flip
-and compositing opacity did not produce clean controlled pairs and remain open.
+generated off-to-on copy opened and survived Save As in Filmora. The first
+vertical-flip and compositing-opacity attempts were noisy and remained open at
+that point.
 Uniform Corner Radius produced a clean 10%-to-20% repeat across the four named
 corner parameters; range and first-use behavior remain open.
 Anchor Point X and Y produced clean 100-to-200-pixel repeats using the same
@@ -63,7 +64,8 @@ resolution conversion as Position. A linked uniform-speed 1.25x-to-1.50x
 repeat mapped the paired clip bounds and embedded speed payload, but its opaque
 `MD5` generation still blocks a writer.
 An existing vertical-flip node then produced the same clean two-part toggle as
-horizontal flip. Basic Color Temperature produced a clean 10-to-20 repeat at
+horizontal flip. Its guarded off-to-on copy also opened and survived Save As in
+Filmora, while insertion remains open. Basic Color Temperature produced a clean 10-to-20 repeat at
 AdjustColor `u_temperature`. The subsequent sweep completed all visible Basic
 Color, Light, Sharpen, and Vignette scalar controls. Each was a one-parameter
 repeat; Sharpen was the only separate effect node. Presets, toggles, Auto White

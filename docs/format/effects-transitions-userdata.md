@@ -127,6 +127,14 @@ existing node, off-to-on removed `enable: false` and changed key-101 data from
 vertical insertion was observed only as incidental normalization during a
 different edit, so insertion remains unsupported.
 
+A guarded copy-only writer now supports replacement of this exact existing
+vertical-flip shape. It rejects absent, duplicate, or unfamiliar state nodes and
+audits the output for exactly the `enable` and key-101 changes before retaining
+the copy. The generated off-to-on project opened in Filmora 15.6.4.11894, and a
+Filmora Save As retained the absent `enable` field and `AQAAAA==` key-101 state.
+The round-tripped project passed every format probe. First-use insertion is
+still unsupported.
+
 ### Controlled uniform corner radius change
 
 Repeating Basic > Corner Radius from 10% to 20% changed exactly four existing
