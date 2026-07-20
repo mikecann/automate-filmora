@@ -311,6 +311,31 @@ exactly one existing finite `VolumeGain` parameter. It does not claim support
 for inserting a missing parameter or recreating Filmora's first-use effect
 normalization. Schemas 1 through 5 remain unchanged and supported.
 
+## Existing audio clip fade-in acceptance
+
+On the same disposable five-second clip, the first Basic Audio fade-in change
+from `0.00 s` to `1.00 s` added a `FadeInTime` parameter to the existing
+`audio/effect/fade` node. That Save As also regenerated and reordered unrelated
+effect and clip metadata, so insertion is not a writer target.
+
+Repeating the edit from the normalized save, from `1.00 s` to `2.00 s`, isolated
+one semantic property: `FadeInTime.fxParam.unValue` changed from `1.0` to `2.0`,
+apart from the known per-save timeline token and project metadata. The parameter
+uses `paramType: 2`, and its value matches the UI duration in seconds.
+
+The replacement-only writer changed the existing value from `1.0` to `1.5` with
+one semantic diff. Its source-aware audit and every format probe passed. Filmora
+15.6.4.11894 opened the generated copy and visibly displayed `1.50 s`, saved it
+to a new path, retained `FadeInTime: 1.5`, fully quit, relaunched, and reopened
+the Filmora-saved copy with `1.50 s` still visible.
+
+API version 7 and immutable plan schema version 7 expose
+`replace_clip_fade_in`. Target discovery lists only audio clips with exactly one
+existing positive `FadeInTime` not exceeding the clip duration. The writer also
+rejects zero, negative, stale, missing, and over-duration values. Insertion,
+removal by setting zero, and fade-out remain unsupported. Schemas 1 through 6
+remain unchanged and supported.
+
 ## Existing linked A/V split acceptance
 
 The initial 2.48-second split was repeated from a new Filmora Save As baseline.

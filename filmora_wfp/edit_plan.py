@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, TypedDict, Union
 
 from .analysis import WFP_TICKS_PER_SECOND, list_titles
+from .audio_fade import preflight_clip_fade_in, replace_clip_fade_in
 from .archive import WfpArchive, WfpError
 from .evals import evaluate_project
 from .linked_av import (
@@ -42,9 +43,9 @@ from .transitions import (
 from .volume import preflight_clip_volume_gain, replace_clip_volume_gain
 
 
-EDIT_PLAN_SCHEMA_VERSION = 6
-EDIT_PLAN_API_VERSION = 6
-SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3, 4, 5, 6)
+EDIT_PLAN_SCHEMA_VERSION = 7
+EDIT_PLAN_API_VERSION = 7
+SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3, 4, 5, 6, 7)
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _PLAIN_DECIMAL_RE = re.compile(r"^(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
 _SIGNED_DECIMAL_RE = re.compile(r"^-?(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
@@ -70,6 +71,7 @@ class EditTargetsResult(TypedDict):
     title_text_targets: List[Dict[str, Any]]
     rotation_targets: List[Dict[str, Any]]
     volume_gain_targets: List[Dict[str, Any]]
+    fade_in_targets: List[Dict[str, Any]]
     linked_transition_targets: List[Dict[str, Any]]
     linked_av_targets: List[Dict[str, Any]]
 
@@ -190,6 +192,16 @@ class ReplaceClipVolumeGainOperation:
 
 
 @dataclass(frozen=True)
+class ReplaceClipFadeInOperation:
+    """Replace one existing audio clip FadeInTime parameter."""
+
+    operation_id: str
+    clip_uid: str
+    old_fade_in: Decimal
+    new_fade_in: Decimal
+
+
+@dataclass(frozen=True)
 class ReplaceLinkedTransitionDurationOperation:
     """Replace the duration of one observed linked transition pair."""
 
@@ -263,6 +275,7 @@ EditOperation = Union[
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
     ReplaceClipVolumeGainOperation,
+    ReplaceClipFadeInOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
     MoveLinkedAvPairOperation,
@@ -477,7 +490,7 @@ def _parse_plan(value: Any) -> EditPlan:
             template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
             cards=cards,
         )
-    elif operation_name == "replace_title_text" and schema_version in (2, 3, 4, 5, 6):
+    elif operation_name == "replace_title_text" and schema_version in (2, 3, 4, 5, 6, 7):
         _only_keys(raw_operation, ("id", "op", "target", "new_text"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "text"), "operations[0].target")
@@ -491,7 +504,7 @@ def _parse_plan(value: Any) -> EditPlan:
         )
         if operation.new_text == operation.old_text:
             raise WfpError("operations[0].new_text must differ from the current text")
-    elif operation_name == "replace_clip_rotation" and schema_version in (3, 4, 5, 6):
+    elif operation_name == "replace_clip_rotation" and schema_version in (3, 4, 5, 6, 7):
         _only_keys(raw_operation, ("id", "op", "target", "new_rotation"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "rotation"), "operations[0].target")
@@ -509,7 +522,7 @@ def _parse_plan(value: Any) -> EditPlan:
         )
         if operation.new_rotation == operation.old_rotation:
             raise WfpError("operations[0].new_rotation must differ from the current rotation")
-    elif operation_name == "replace_clip_volume_gain" and schema_version == 6:
+    elif operation_name == "replace_clip_volume_gain" and schema_version in (6, 7):
         _only_keys(raw_operation, ("id", "op", "target", "new_volume_gain"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "volume_gain"), "operations[0].target")
@@ -529,10 +542,30 @@ def _parse_plan(value: Any) -> EditPlan:
             raise WfpError(
                 "operations[0].new_volume_gain must differ from the current volume gain"
             )
+    elif operation_name == "replace_clip_fade_in" and schema_version == 7:
+        _only_keys(raw_operation, ("id", "op", "target", "new_fade_in"), "operations[0]")
+        target = _object(raw_operation.get("target"), "operations[0].target")
+        _only_keys(target, ("clip_uid", "fade_in"), "operations[0].target")
+        operation = ReplaceClipFadeInOperation(
+            operation_id=operation_id,
+            clip_uid=_non_empty_text(
+                target.get("clip_uid"), "operations[0].target.clip_uid"
+            ),
+            old_fade_in=_positive_decimal(
+                target.get("fade_in"), "operations[0].target.fade_in"
+            ),
+            new_fade_in=_positive_decimal(
+                raw_operation.get("new_fade_in"), "operations[0].new_fade_in"
+            ),
+        )
+        if operation.new_fade_in == operation.old_fade_in:
+            raise WfpError(
+                "operations[0].new_fade_in must differ from the current fade-in time"
+            )
     elif operation_name in (
         "replace_linked_transition_duration",
         "remove_linked_transition",
-    ) and schema_version in (3, 4, 5, 6):
+    ) and schema_version in (3, 4, 5, 6, 7):
         allowed = (
             ("id", "op", "target", "new_duration_ticks")
             if operation_name == "replace_linked_transition_duration"
@@ -582,7 +615,7 @@ def _parse_plan(value: Any) -> EditPlan:
         "trim_linked_av_pair_start",
         "trim_linked_av_pair_end",
         "split_linked_av_pair",
-    ) and schema_version in (4, 5, 6):
+    ) and schema_version in (4, 5, 6, 7):
         replacement_field = (
             "new_end_ticks"
             if operation_name == "trim_linked_av_pair_end"
@@ -649,8 +682,8 @@ def _parse_plan(value: Any) -> EditPlan:
                 new_end_ticks=replacement_ticks,
             )
         else:
-            if schema_version not in (5, 6):
-                raise WfpError("split_linked_av_pair requires edit-plan schema version 5 or 6")
+            if schema_version not in (5, 6, 7):
+                raise WfpError("split_linked_av_pair requires edit-plan schema version 5 through 7")
             if not start_ticks < replacement_ticks < end_ticks:
                 raise WfpError("operations[0].split_ticks must be inside the current range")
             operation = SplitLinkedAvPairOperation(
@@ -698,6 +731,7 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             ReplaceTitleTextOperation,
             ReplaceClipRotationOperation,
             ReplaceClipVolumeGainOperation,
+            ReplaceClipFadeInOperation,
             ReplaceLinkedTransitionDurationOperation,
             RemoveLinkedTransitionOperation,
             MoveLinkedAvPairOperation,
@@ -709,8 +743,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
         raise WfpError("Unsupported typed edit operation")
     _non_empty_text(operation.operation_id, "operations[0].id")
     if isinstance(operation, ReplaceTitleTextOperation):
-        if plan.schema_version not in (2, 3, 4, 5, 6):
-            raise WfpError("replace_title_text requires edit-plan schema version 2 through 6")
+        if plan.schema_version not in (2, 3, 4, 5, 6, 7):
+            raise WfpError("replace_title_text requires edit-plan schema version 2 through 7")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         _non_empty_text(operation.old_text, "operations[0].target.text")
         _non_empty_text(operation.new_text, "operations[0].new_text")
@@ -718,8 +752,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             raise WfpError("operations[0].new_text must differ from the current text")
         return plan
     if isinstance(operation, ReplaceClipRotationOperation):
-        if plan.schema_version not in (3, 4, 5, 6):
-            raise WfpError("replace_clip_rotation requires edit-plan schema version 3 through 6")
+        if plan.schema_version not in (3, 4, 5, 6, 7):
+            raise WfpError("replace_clip_rotation requires edit-plan schema version 3 through 7")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         old_rotation = _finite_decimal(
             operation.old_rotation, "operations[0].target.rotation"
@@ -729,8 +763,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             raise WfpError("operations[0].new_rotation must differ from the current rotation")
         return plan
     if isinstance(operation, ReplaceClipVolumeGainOperation):
-        if plan.schema_version != 6:
-            raise WfpError("replace_clip_volume_gain requires edit-plan schema version 6")
+        if plan.schema_version not in (6, 7):
+            raise WfpError("replace_clip_volume_gain requires edit-plan schema version 6 or 7")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         old_volume_gain = _finite_decimal(
             operation.old_volume_gain, "operations[0].target.volume_gain"
@@ -743,12 +777,27 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
                 "operations[0].new_volume_gain must differ from the current volume gain"
             )
         return plan
+    if isinstance(operation, ReplaceClipFadeInOperation):
+        if plan.schema_version != 7:
+            raise WfpError("replace_clip_fade_in requires edit-plan schema version 7")
+        _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
+        old_fade_in = _positive_decimal(
+            operation.old_fade_in, "operations[0].target.fade_in"
+        )
+        new_fade_in = _positive_decimal(
+            operation.new_fade_in, "operations[0].new_fade_in"
+        )
+        if old_fade_in == new_fade_in:
+            raise WfpError(
+                "operations[0].new_fade_in must differ from the current fade-in time"
+            )
+        return plan
     if isinstance(
         operation,
         (ReplaceLinkedTransitionDurationOperation, RemoveLinkedTransitionOperation),
     ):
-        if plan.schema_version not in (3, 4, 5, 6):
-            raise WfpError("Linked transition operations require edit-plan schema version 3 through 6")
+        if plan.schema_version not in (3, 4, 5, 6, 7):
+            raise WfpError("Linked transition operations require edit-plan schema version 3 through 7")
         _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
         _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
         if isinstance(operation, ReplaceLinkedTransitionDurationOperation):
@@ -777,10 +826,10 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
         ),
     ):
         if isinstance(operation, SplitLinkedAvPairOperation):
-            if plan.schema_version not in (5, 6):
-                raise WfpError("split_linked_av_pair requires edit-plan schema version 5 or 6")
-        elif plan.schema_version not in (4, 5, 6):
-            raise WfpError("Linked A/V operations require edit-plan schema version 4 through 6")
+            if plan.schema_version not in (5, 6, 7):
+                raise WfpError("split_linked_av_pair requires edit-plan schema version 5 through 7")
+        elif plan.schema_version not in (4, 5, 6, 7):
+            raise WfpError("Linked A/V operations require edit-plan schema version 4 through 7")
         _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
         _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
         start_ticks = _non_negative_ticks(
@@ -1079,14 +1128,21 @@ def _title_card_targets(path: Pathish) -> Tuple[EditPlanSource, List[Dict[str, A
 
 def _existing_effect_targets(
     path: Pathish,
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> Tuple[
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+    List[Dict[str, Any]],
+]:
     """Discover only exact structures accepted by proven effect writers."""
 
     rotation_targets: List[Dict[str, Any]] = []
     volume_gain_targets: List[Dict[str, Any]] = []
+    fade_in_targets: List[Dict[str, Any]] = []
     transition_targets: List[Dict[str, Any]] = []
     seen_rotations = set()
     seen_volume_gains = set()
+    seen_fade_ins = set()
     seen_transitions = set()
     with WfpArchive(path) as archive:
         for _member, document in archive.timeline_documents():
@@ -1218,6 +1274,68 @@ def _existing_effect_targets(
                                         }
                                     )
 
+                            fade_values: List[Decimal] = []
+                            if isinstance(chains, list):
+                                for chain in chains:
+                                    if not isinstance(chain, Mapping) or not isinstance(
+                                        chain.get("effectList"), list
+                                    ):
+                                        continue
+                                    for effect in chain["effectList"]:
+                                        if (
+                                            not isinstance(effect, Mapping)
+                                            or effect.get("id") != "audio/effect/fade"
+                                            or not isinstance(effect.get("paramList"), list)
+                                        ):
+                                            continue
+                                        for parameter in effect["paramList"]:
+                                            fx_param = (
+                                                parameter.get("fxParam")
+                                                if isinstance(parameter, Mapping)
+                                                else None
+                                            )
+                                            if (
+                                                isinstance(parameter, Mapping)
+                                                and parameter.get("name") == "FadeInTime"
+                                                and isinstance(fx_param, Mapping)
+                                                and "unValue" in fx_param
+                                            ):
+                                                try:
+                                                    fade_values.append(
+                                                        _positive_decimal(
+                                                            fx_param["unValue"], "FadeInTime"
+                                                        )
+                                                    )
+                                                except WfpError:
+                                                    pass
+                            begin = clip.get("tlBegin")
+                            end = clip.get("tlEnd")
+                            if (
+                                len(fade_values) == 1
+                                and isinstance(begin, int)
+                                and isinstance(end, int)
+                                and end > begin
+                            ):
+                                duration = Decimal(end - begin) / WFP_TICKS_PER_SECOND
+                                if fade_values[0] <= duration:
+                                    key = (clip_uid, fade_values[0])
+                                    if key not in seen_fade_ins:
+                                        seen_fade_ins.add(key)
+                                        fade_in_targets.append(
+                                            {
+                                                "target_type": "existing_clip_fade_in",
+                                                "selector": {
+                                                    "clip_uid": clip_uid,
+                                                    "fade_in": str(fade_values[0]),
+                                                },
+                                                "max_fade_in": str(duration),
+                                                "timeline_id": timeline_id,
+                                                "timeline_index": timeline_index,
+                                                "track_index": track_index,
+                                                "clip_index": clip_index,
+                                            }
+                                        )
+
                         transition = clip.get("postTransition")
                         if not isinstance(transition, Mapping):
                             continue
@@ -1284,10 +1402,13 @@ def _existing_effect_targets(
     volume_gain_targets.sort(
         key=lambda target: tuple(str(value) for value in target["selector"].values())
     )
+    fade_in_targets.sort(
+        key=lambda target: tuple(str(value) for value in target["selector"].values())
+    )
     transition_targets.sort(
         key=lambda target: tuple(str(value) for value in target["selector"].values())
     )
-    return rotation_targets, volume_gain_targets, transition_targets
+    return rotation_targets, volume_gain_targets, fade_in_targets, transition_targets
 
 
 def _linked_av_targets(path: Pathish) -> List[Dict[str, Any]]:
@@ -1455,7 +1576,9 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
             target["selector"]["text"],
         )
     )
-    rotation_targets, volume_gain_targets, transition_targets = _existing_effect_targets(path)
+    rotation_targets, volume_gain_targets, fade_in_targets, transition_targets = (
+        _existing_effect_targets(path)
+    )
     linked_av_targets = _linked_av_targets(path)
     if project_sha256(path) != source["sha256"]:
         raise WfpError("Source project changed while edit targets were being discovered")
@@ -1467,6 +1590,7 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
             "replace_title_text",
             "replace_clip_rotation",
             "replace_clip_volume_gain",
+            "replace_clip_fade_in",
             "replace_linked_transition_duration",
             "remove_linked_transition",
             "move_linked_av_pair",
@@ -1478,6 +1602,7 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
         "title_text_targets": title_targets,
         "rotation_targets": rotation_targets,
         "volume_gain_targets": volume_gain_targets,
+        "fade_in_targets": fade_in_targets,
         "linked_transition_targets": transition_targets,
         "linked_av_targets": linked_av_targets,
     }
@@ -1640,6 +1765,43 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
                     "resolved_target": dict(target),
                     "new_rotation": str(operation.new_rotation),
                     "matching_archive_occurrences": rotation_preflight[
+                        "matching_archive_occurrences"
+                    ],
+                }
+            ],
+            "filmora_round_trip": {"required": True, "performed": False},
+        }
+
+    if isinstance(operation, ReplaceClipFadeInOperation):
+        selector = {
+            "clip_uid": operation.clip_uid,
+            "fade_in": str(operation.old_fade_in),
+        }
+        target = _resolve_exact_selector(
+            selector, targets_result["fade_in_targets"], "Clip fade-in"
+        )
+        fade_preflight = preflight_clip_fade_in(
+            source_path,
+            clip_uid=operation.clip_uid,
+            old_fade_in=operation.old_fade_in,
+            new_fade_in=operation.new_fade_in,
+        )
+        return {
+            "api_version": EDIT_PLAN_API_VERSION,
+            "plan_schema_version": parsed.schema_version,
+            "status": "ready",
+            "writes_performed": False,
+            "description": parsed.description,
+            "source": targets_result["source"],
+            "preflight": {"source_sha256_matches": True, "format_eval_valid": True},
+            "operations": [
+                {
+                    "id": operation.operation_id,
+                    "op": "replace_clip_fade_in",
+                    "requested_target": selector,
+                    "resolved_target": dict(target),
+                    "new_fade_in": str(operation.new_fade_in),
+                    "matching_archive_occurrences": fade_preflight[
                         "matching_archive_occurrences"
                     ],
                 }
@@ -1924,6 +2086,17 @@ def apply_edit_plan(
             clip_uid=operation.clip_uid,
             old_volume_gain=operation.old_volume_gain,
             new_volume_gain=operation.new_volume_gain,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, ReplaceClipFadeInOperation):
+        writer_result = replace_clip_fade_in(
+            source,
+            output,
+            clip_uid=operation.clip_uid,
+            old_fade_in=operation.old_fade_in,
+            new_fade_in=operation.new_fade_in,
             expected_source_sha256=parsed.source_sha256,
         )
         created_cards = []

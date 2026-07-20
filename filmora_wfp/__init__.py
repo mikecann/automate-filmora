@@ -2,6 +2,11 @@
 
 from .analysis import inspect_project, list_titles, validate_project
 from .archive import WfpArchive, WfpError
+from .audio_fade import (
+    audit_clip_fade_in_copy,
+    preflight_clip_fade_in,
+    replace_clip_fade_in,
+)
 from .audit import audit_title_card_copy
 from .corpus import discover_projects, survey_projects
 from .diffing import diff_projects
@@ -19,6 +24,7 @@ from .edit_plan import (
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
     ReplaceClipVolumeGainOperation,
+    ReplaceClipFadeInOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
     MoveLinkedAvPairOperation,
@@ -85,6 +91,7 @@ __all__ = [
     "ReplaceTitleTextOperation",
     "ReplaceClipRotationOperation",
     "ReplaceClipVolumeGainOperation",
+    "ReplaceClipFadeInOperation",
     "ReplaceLinkedTransitionDurationOperation",
     "RemoveLinkedTransitionOperation",
     "MoveLinkedAvPairOperation",
@@ -99,6 +106,7 @@ __all__ = [
     "TitleCardSpec",
     "TitleCardTemplateSelector",
     "apply_edit_plan",
+    "audit_clip_fade_in_copy",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
@@ -131,11 +139,13 @@ __all__ = [
     "split_linked_av_pair",
     "project_sha256",
     "preflight_clip_rotation",
+    "preflight_clip_fade_in",
     "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
+    "replace_clip_fade_in",
     "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
@@ -143,4 +153,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"

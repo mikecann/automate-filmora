@@ -88,6 +88,31 @@ reopened. This proves replacement only. A default clip with no serialized
 `VolumeGain`, fades, balance, equalizer settings, and automation remain outside
 the writer contract.
 
+### Controlled audio fade-in change
+
+On a disposable five-second type `2` audio clip, the first Basic Audio fade-in
+change from `0.00 s` to `1.00 s` added this parameter under the existing
+`audio/effect/fade` node:
+
+```json
+{
+  "name": "FadeInTime",
+  "fxParam": {"paramType": 2, "unValue": 1.0}
+}
+```
+
+That first Save As also regenerated and reordered unrelated effect and clip
+metadata, so it does not authorize insertion. From the normalized save, changing
+`1.00 s` to `2.00 s` changed only `fxParam.unValue` plus the known per-save
+timeline token and project metadata.
+
+A narrow writer changed an already-present value from `1.0` to `1.5` with one
+semantic diff. Filmora 15.6.4.11894 displayed `1.50 s` on the generated copy,
+Save As retained `1.5`, all format probes passed, and a full quit/relaunch
+reopened the saved copy with `1.50 s` still visible. This proves positive
+replacement up to the clip duration only. Insertion, zero/removal, fade-out,
+curve shape, and automation remain outside the writer contract.
+
 ## Transitions
 
 Transitions are not a separate top-level timeline list. They appear on clips as:
