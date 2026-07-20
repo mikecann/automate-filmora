@@ -26,7 +26,8 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _replace(clip: MutableMapping[str, Any], uid: str, old: int, new: int, enabled: Optional[bool]) -> bool:
+def _replace(clip: MutableMapping[str, Any], uid: str, old: int, new: int,
+             old_enabled: Optional[bool], enabled: Optional[bool]) -> bool:
     if clip.get("thisUId") != uid:
         return False
     if clip.get("type") != 1:
@@ -41,6 +42,8 @@ def _replace(clip: MutableMapping[str, Any], uid: str, old: int, new: int, enabl
     clip["backgroundFillBluredness"] = new
     if enabled is not None:
         current_enabled = clip.get("backgroundFillEnable") is True
+        if current_enabled != old_enabled:
+            raise WfpError("Selected Background Blur enable state does not match the expected value")
         if current_enabled == enabled:
             raise WfpError("New Background Blur enable state must differ from current state")
         if enabled:
@@ -70,7 +73,7 @@ def preflight_clip_background_blur(source: Pathish, *, clip_uid: str, old_streng
             if info.filename.endswith(TIMELINE_SUFFIX):
                 document = _load_decimal_json(archive.read(info))
                 for clip in _clips(document):
-                    if _replace(__import__("copy").deepcopy(clip), clip_uid, old_strength, new_strength, new_enabled):
+                    if _replace(__import__("copy").deepcopy(clip), clip_uid, old_strength, new_strength, old_enabled, new_enabled):
                         matches += 1
     if matches != 1:
         raise WfpError("Background Blur selector must match exactly one archive occurrence")
@@ -103,7 +106,7 @@ def replace_clip_background_blur(source: Pathish, output: Pathish, *, clip_uid: 
                 if info.filename.endswith(TIMELINE_SUFFIX):
                     document = _load_decimal_json(data)
                     for clip in _clips(document):
-                        if _replace(clip, clip_uid, old_strength, new_strength, new_enabled):
+                        if _replace(clip, clip_uid, old_strength, new_strength, old_enabled, new_enabled):
                             matches += 1
                     if matches:
                         data = _compact_json(document).encode("utf-8")
