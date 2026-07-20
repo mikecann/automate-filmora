@@ -132,3 +132,8 @@ The newly observed typed fields were `ColorBlur.uEclosion` (enum),
 and `scale` (scalars). Allpurpose Position also carries opaque keyframe JSON,
 so replacing its visible defaults would not be safe without reproducing the
 derived curves and payload checksums.
+
+Across the four exact-build backup copies, each of these three effect families
+occurred in only one project and each exposed one parameter tuple. They are
+therefore useful schema examples, not evidence of universal defaults or valid
+value ranges.
