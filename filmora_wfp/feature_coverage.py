@@ -47,6 +47,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("speed", "custom ramp editing", "open", "derivative and MD5 generation open"),
     ("speed", "AI frame interpolation", "open", "custom dropdown unresolved"),
     ("color.basic", "temperature tint vibrance saturation", "mapped", "direct scalar repeats"),
+    ("color.basic", "first-use AdjustColor insertion", "mapped", "controlled Exposure insertion and Filmora round trip"),
     ("color.light", "exposure brightness contrast highlights shadows whites blacks", "mapped", "direct scalar repeats"),
     ("color.basic", "sharpen", "mapped", "separate effect repeat"),
     ("color.vignette", "amount size roundness feather exposure highlight", "mapped", "direct scalar repeats"),
