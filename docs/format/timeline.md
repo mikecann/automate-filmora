@@ -227,3 +227,11 @@ halves, rejects reused clip/effect IDs, and checks that unrelated timeline and
 archive values remain unchanged. Filmora 15.6.4.11894 opened the generated copy,
 saved it to a new path, retained all four half ranges and exact offsets, and
 reopened the saved copy.
+
+The same writer rule was later verified on two clips in a dense 16-minute
+project: one on primary tracks 3/4 and a different media source on auxiliary
+tracks 9/10. Both generated copies survived Filmora open, Save As, and reopen;
+their resaved visual/audio halves retained identical meeting timeline ticks,
+source points, and speed offsets. This broader evidence supports declarative
+`split_linked_av_pair` plans in immutable schema version 5, while clips with
+unverified speed or key-3 link shapes remain undiscoverable for splitting.

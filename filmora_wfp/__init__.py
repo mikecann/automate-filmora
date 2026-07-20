@@ -23,6 +23,7 @@ from .edit_plan import (
     MoveLinkedAvPairOperation,
     TrimLinkedAvPairStartOperation,
     TrimLinkedAvPairEndOperation,
+    SplitLinkedAvPairOperation,
     apply_edit_plan,
     edit_plan_schema,
     explain_edit_plan,
@@ -82,6 +83,7 @@ __all__ = [
     "MoveLinkedAvPairOperation",
     "TrimLinkedAvPairStartOperation",
     "TrimLinkedAvPairEndOperation",
+    "SplitLinkedAvPairOperation",
     "EditPlan",
     "EditPlanApplicationResult",
     "EditPlanExplanation",
@@ -131,4 +133,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"

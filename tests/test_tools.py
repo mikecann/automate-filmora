@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from filmora_wfp import (
     EditPlan,
+    SplitLinkedAvPairOperation,
     WfpArchive,
     WfpError,
     apply_edit_plan,
@@ -171,7 +172,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
             digest = project_sha256(source)
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 4)
+            self.assertEqual(targets["api_version"], 5)
             self.assertEqual(
                 targets["rotation_targets"][0]["selector"],
                 {"clip_uid": "video-source-clip", "rotation": "10.0"},
@@ -713,7 +714,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 "end_ticks": 60_000_000,
             }
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 4)
+            self.assertEqual(targets["api_version"], 5)
             self.assertEqual(len(targets["linked_av_targets"]), 1)
             self.assertEqual(targets["linked_av_targets"][0]["selector"], selector)
             self.assertEqual(
@@ -855,6 +856,57 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertEqual([(clip["tlBegin"], clip["tlEnd"]) for clip in video_clips], [(40_000_000, 50_000_000), (50_000_000, 60_000_000)])
             new_ids = {audio_clips[1]["thisUId"], video_clips[1]["thisUId"]}
             self.assertTrue(new_ids.isdisjoint({"split-audio", "split-video"}))
+
+            targets = list_edit_targets(source)
+            split_target = next(
+                target
+                for target in targets["linked_av_targets"]
+                if target["selector"]["video_clip_uid"] == "split-video"
+            )
+            self.assertIn("split_linked_av_pair", split_target["capabilities"])
+            plan = {
+                "schema_version": 5,
+                "source": {"sha256": project_sha256(source)},
+                "operations": [
+                    {
+                        "op": "split_linked_av_pair",
+                        "target": split_target["selector"],
+                        "split_ticks": 50_000_000,
+                    }
+                ],
+            }
+            explanation = explain_edit_plan(source, plan)
+            self.assertEqual(explanation["api_version"], 5)
+            self.assertFalse(explanation["writes_performed"])
+            self.assertEqual(explanation["operations"][0]["op"], "split_linked_av_pair")
+            self.assertEqual(explanation["operations"][0]["split_ticks"], 50_000_000)
+
+            typed_plan = EditPlan(
+                schema_version=5,
+                source_sha256=project_sha256(source),
+                operations=(
+                    SplitLinkedAvPairOperation(
+                        operation_id="typed-split",
+                        video_clip_uid="split-video",
+                        audio_clip_uid="split-audio",
+                        old_start_ticks=40_000_000,
+                        old_end_ticks=60_000_000,
+                        split_ticks=50_000_000,
+                    ),
+                ),
+            )
+            self.assertIsInstance(
+                load_edit_plan(typed_plan).operations[0], SplitLinkedAvPairOperation
+            )
+
+            plan_output = root / "split-plan.wfp"
+            plan_result = apply_edit_plan(source, plan_output, plan)
+            self.assertTrue(plan_result["verification"]["source_aware_audit_valid"])
+
+            v4_plan = dict(plan)
+            v4_plan["schema_version"] = 4
+            with self.assertRaisesRegex(WfpError, "requires edit-plan schema version 5"):
+                load_edit_plan(v4_plan)
 
             def invalidate_new_video_id(timeline_document):
                 clips = timeline_document["timelineInfos"][0]["trackInfos"][1]["clipList"]
@@ -1103,7 +1155,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 4)
+            self.assertEqual(targets["api_version"], 5)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -1172,11 +1224,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema_v3["$defs"]["replaceClipRotationOperation"]["properties"]["op"]["const"],
                 "replace_clip_rotation",
             )
-            schema_v4 = edit_plan_schema()
+            schema_v4 = edit_plan_schema(4)
             self.assertEqual(schema_v4["properties"]["schema_version"]["const"], 4)
             self.assertEqual(
                 schema_v4["$defs"]["moveLinkedAvPairOperation"]["properties"]["op"]["const"],
                 "move_linked_av_pair",
+            )
+            schema_v5 = edit_plan_schema()
+            self.assertEqual(schema_v5["properties"]["schema_version"]["const"], 5)
+            self.assertEqual(
+                schema_v5["$defs"]["splitLinkedAvPairOperation"]["properties"]["op"]["const"],
+                "split_linked_av_pair",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -1188,7 +1246,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 4)
+            self.assertEqual(explanation["api_version"], 5)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -1327,7 +1385,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 4)
+            self.assertEqual(error["api_version"], 5)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 

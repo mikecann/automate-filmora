@@ -281,15 +281,12 @@ trim diffs. Schemas 1 through 3 remain byte-for-byte unchanged and supported.
 
 The next controlled Filmora batch should evaluate:
 
-1. repeat linked movement, trimming, and splitting on more sources and track layouts;
-2. test whether linked splits preserve more complex clip effects and keyframes;
-3. add a single-operation batch format only if a real workflow needs it.
+1. linked splits with user-authored effects and keyframes;
+2. linked movement and trimming on more source and track layouts;
+3. a multi-operation plan only when a real workflow needs it.
 
-The split is intentionally a Python-only primitive and absent from immutable
-edit-plan schema version 4. A future declarative promotion requires a new schema
-version plus broader fixture coverage. Track operations and new effect insertion
-remain later work because their persistence or identifier behaviour is less
-certain.
+Track operations and new effect insertion remain later work because their
+persistence or identifier behaviour is less certain.
 
 ## Existing linked A/V split acceptance
 
@@ -305,3 +302,27 @@ source-aware audit passed, as did every format probe. Filmora 15.6.4.11894 opene
 the generated project, visibly showed both linked halves, saved it to another
 new path, retained `0..24,800,000` and `24,800,000..50,000,000` on both tracks
 with exact `2.48` source/offset boundaries, and reopened the saved copy.
+
+### 2026-07-20 dense-project split coverage
+
+Two more copy-only splits used the current 16-minute AI Tips project without
+modifying its source. One selected a linked pair on primary tracks 3/4; the other
+used different source media on auxiliary tracks 9/10. Both generated projects
+passed the source-aware audit and every format probe. Filmora 15.6.4.11894 opened
+each generated copy, saved each to a new path, and reopened the saved copy.
+
+The resaved primary project retained paired ranges
+`5,550,999,996..5,638,833,329` and
+`5,638,833,329..5,726,666,663`. The auxiliary project retained
+`3,532,000,000..3,555,333,334` and
+`3,555,333,334..3,578,666,669`. Visual and audio source points and decimal speed
+offsets met exactly at each split. These cases add different media, long-project
+normalization, and non-default track-layout evidence to the repeated minimal
+fixture.
+
+API version 5 and immutable plan schema version 5 now expose
+`split_linked_av_pair`. Target discovery advertises it only for an unambiguous,
+transition-free, forward constant-1x pair that also has the observed matching
+key-3 link identifier shape. Explain and apply use the same preflight and
+source-aware audit as the accepted Python writer. Schemas 1 through 4 remain
+unchanged and supported.

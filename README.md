@@ -143,15 +143,15 @@ The tools can currently:
   auditing the matching timeline, source, and decimal speed-offset fields;
 - split one transition-free, forward 1x linked A/V pair while regenerating the
   second halves' clip/effect IDs and shared opaque link ID;
-- discover, explain, and apply those linked A/V moves and trims through
-  declarative edit-plan API/schema version 4.
+- discover, explain, and apply linked A/V moves, trims, and guarded splits
+  through the declarative edit-plan API.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
 before it should be trusted for production editing.
 
-Published schemas 1 through 3 remain immutable. Schema version 4 adds the three
-linked A/V operations without changing the earlier contracts.
+Published schemas 1 through 4 remain immutable. Schema version 5 adds guarded
+linked A/V splitting without changing the earlier contracts.
 
 ## Related work
 

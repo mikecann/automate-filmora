@@ -26,6 +26,11 @@ from .linked_av_start_trim import (
     preflight_linked_av_start_trim,
     trim_linked_av_pair_start,
 )
+from .linked_av_split import (
+    _linked_userdata_id,
+    preflight_linked_av_split,
+    split_linked_av_pair,
+)
 from .rotation import preflight_clip_rotation, replace_clip_rotation
 from .title_cards import clone_title_cards
 from .title_text import preflight_title_text_replacement, replace_title_text
@@ -36,9 +41,9 @@ from .transitions import (
 )
 
 
-EDIT_PLAN_SCHEMA_VERSION = 4
-EDIT_PLAN_API_VERSION = 4
-SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3, 4)
+EDIT_PLAN_SCHEMA_VERSION = 5
+EDIT_PLAN_API_VERSION = 5
+SUPPORTED_EDIT_PLAN_SCHEMA_VERSIONS = (1, 2, 3, 4, 5)
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _PLAIN_DECIMAL_RE = re.compile(r"^(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
 _SIGNED_DECIMAL_RE = re.compile(r"^-?(?:0|[0-9]+(?:\.[0-9]+)?|0?\.[0-9]+)$")
@@ -229,6 +234,18 @@ class TrimLinkedAvPairEndOperation:
     new_end_ticks: int
 
 
+@dataclass(frozen=True)
+class SplitLinkedAvPairOperation:
+    """Split one forward 1x linked A/V pair at an interior timeline tick."""
+
+    operation_id: str
+    video_clip_uid: str
+    audio_clip_uid: str
+    old_start_ticks: int
+    old_end_ticks: int
+    split_ticks: int
+
+
 EditOperation = Union[
     CloneTitleCardsOperation,
     ReplaceTitleTextOperation,
@@ -238,6 +255,7 @@ EditOperation = Union[
     MoveLinkedAvPairOperation,
     TrimLinkedAvPairStartOperation,
     TrimLinkedAvPairEndOperation,
+    SplitLinkedAvPairOperation,
 ]
 
 
@@ -446,7 +464,7 @@ def _parse_plan(value: Any) -> EditPlan:
             template=_parse_selector(raw_operation.get("template"), "operations[0].template"),
             cards=cards,
         )
-    elif operation_name == "replace_title_text" and schema_version in (2, 3, 4):
+    elif operation_name == "replace_title_text" and schema_version in (2, 3, 4, 5):
         _only_keys(raw_operation, ("id", "op", "target", "new_text"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "text"), "operations[0].target")
@@ -460,7 +478,7 @@ def _parse_plan(value: Any) -> EditPlan:
         )
         if operation.new_text == operation.old_text:
             raise WfpError("operations[0].new_text must differ from the current text")
-    elif operation_name == "replace_clip_rotation" and schema_version in (3, 4):
+    elif operation_name == "replace_clip_rotation" and schema_version in (3, 4, 5):
         _only_keys(raw_operation, ("id", "op", "target", "new_rotation"), "operations[0]")
         target = _object(raw_operation.get("target"), "operations[0].target")
         _only_keys(target, ("clip_uid", "rotation"), "operations[0].target")
@@ -481,7 +499,7 @@ def _parse_plan(value: Any) -> EditPlan:
     elif operation_name in (
         "replace_linked_transition_duration",
         "remove_linked_transition",
-    ) and schema_version in (3, 4):
+    ) and schema_version in (3, 4, 5):
         allowed = (
             ("id", "op", "target", "new_duration_ticks")
             if operation_name == "replace_linked_transition_duration"
@@ -530,10 +548,13 @@ def _parse_plan(value: Any) -> EditPlan:
         "move_linked_av_pair",
         "trim_linked_av_pair_start",
         "trim_linked_av_pair_end",
-    ) and schema_version == 4:
+        "split_linked_av_pair",
+    ) and schema_version in (4, 5):
         replacement_field = (
             "new_end_ticks"
             if operation_name == "trim_linked_av_pair_end"
+            else "split_ticks"
+            if operation_name == "split_linked_av_pair"
             else "new_start_ticks"
         )
         _only_keys(raw_operation, ("id", "op", "target", replacement_field), "operations[0]")
@@ -583,7 +604,7 @@ def _parse_plan(value: Any) -> EditPlan:
                 old_end_ticks=end_ticks,
                 new_start_ticks=replacement_ticks,
             )
-        else:
+        elif operation_name == "trim_linked_av_pair_end":
             if not start_ticks < replacement_ticks < end_ticks:
                 raise WfpError("operations[0].new_end_ticks must shorten the current range")
             operation = TrimLinkedAvPairEndOperation(
@@ -593,6 +614,19 @@ def _parse_plan(value: Any) -> EditPlan:
                 old_start_ticks=start_ticks,
                 old_end_ticks=end_ticks,
                 new_end_ticks=replacement_ticks,
+            )
+        else:
+            if schema_version != 5:
+                raise WfpError("split_linked_av_pair requires edit-plan schema version 5")
+            if not start_ticks < replacement_ticks < end_ticks:
+                raise WfpError("operations[0].split_ticks must be inside the current range")
+            operation = SplitLinkedAvPairOperation(
+                operation_id=operation_id,
+                video_clip_uid=video_clip_uid,
+                audio_clip_uid=audio_clip_uid,
+                old_start_ticks=start_ticks,
+                old_end_ticks=end_ticks,
+                split_ticks=replacement_ticks,
             )
     else:
         raise WfpError("Unsupported edit operation: {0}".format(operation_name))
@@ -635,13 +669,14 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             MoveLinkedAvPairOperation,
             TrimLinkedAvPairStartOperation,
             TrimLinkedAvPairEndOperation,
+            SplitLinkedAvPairOperation,
         ),
     ):
         raise WfpError("Unsupported typed edit operation")
     _non_empty_text(operation.operation_id, "operations[0].id")
     if isinstance(operation, ReplaceTitleTextOperation):
-        if plan.schema_version not in (2, 3, 4):
-            raise WfpError("replace_title_text requires edit-plan schema version 2, 3, or 4")
+        if plan.schema_version not in (2, 3, 4, 5):
+            raise WfpError("replace_title_text requires edit-plan schema version 2, 3, 4, or 5")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         _non_empty_text(operation.old_text, "operations[0].target.text")
         _non_empty_text(operation.new_text, "operations[0].new_text")
@@ -649,8 +684,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             raise WfpError("operations[0].new_text must differ from the current text")
         return plan
     if isinstance(operation, ReplaceClipRotationOperation):
-        if plan.schema_version not in (3, 4):
-            raise WfpError("replace_clip_rotation requires edit-plan schema version 3 or 4")
+        if plan.schema_version not in (3, 4, 5):
+            raise WfpError("replace_clip_rotation requires edit-plan schema version 3, 4, or 5")
         _non_empty_text(operation.clip_uid, "operations[0].target.clip_uid")
         old_rotation = _finite_decimal(
             operation.old_rotation, "operations[0].target.rotation"
@@ -663,8 +698,8 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
         operation,
         (ReplaceLinkedTransitionDurationOperation, RemoveLinkedTransitionOperation),
     ):
-        if plan.schema_version not in (3, 4):
-            raise WfpError("Linked transition operations require edit-plan schema version 3 or 4")
+        if plan.schema_version not in (3, 4, 5):
+            raise WfpError("Linked transition operations require edit-plan schema version 3, 4, or 5")
         _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
         _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
         if isinstance(operation, ReplaceLinkedTransitionDurationOperation):
@@ -685,10 +720,18 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
         return plan
     if isinstance(
         operation,
-        (MoveLinkedAvPairOperation, TrimLinkedAvPairStartOperation, TrimLinkedAvPairEndOperation),
+        (
+            MoveLinkedAvPairOperation,
+            TrimLinkedAvPairStartOperation,
+            TrimLinkedAvPairEndOperation,
+            SplitLinkedAvPairOperation,
+        ),
     ):
-        if plan.schema_version != 4:
-            raise WfpError("Linked A/V operations require edit-plan schema version 4")
+        if isinstance(operation, SplitLinkedAvPairOperation):
+            if plan.schema_version != 5:
+                raise WfpError("split_linked_av_pair requires edit-plan schema version 5")
+        elif plan.schema_version not in (4, 5):
+            raise WfpError("Linked A/V operations require edit-plan schema version 4 or 5")
         _non_empty_text(operation.video_clip_uid, "operations[0].target.video_clip_uid")
         _non_empty_text(operation.audio_clip_uid, "operations[0].target.audio_clip_uid")
         start_ticks = _non_negative_ticks(
@@ -709,12 +752,18 @@ def _validate_typed_plan(plan: EditPlan) -> EditPlan:
             )
             if not start_ticks < new_start < end_ticks:
                 raise WfpError("operations[0].new_start_ticks must shorten the current range")
-        else:
+        elif isinstance(operation, TrimLinkedAvPairEndOperation):
             new_end = _non_negative_ticks(
                 operation.new_end_ticks, "operations[0].new_end_ticks"
             )
             if not start_ticks < new_end < end_ticks:
                 raise WfpError("operations[0].new_end_ticks must shorten the current range")
+        else:
+            split_ticks = _non_negative_ticks(
+                operation.split_ticks, "operations[0].split_ticks"
+            )
+            if not start_ticks < split_ticks < end_ticks:
+                raise WfpError("operations[0].split_ticks must be inside the current range")
         return plan
     if not isinstance(operation, CloneTitleCardsOperation):
         raise WfpError("Unsupported typed edit operation")
@@ -1230,8 +1279,15 @@ def _linked_av_targets(path: Pathish) -> List[Dict[str, Any]]:
                             and key[2] - key[1] > 1
                         ):
                             capabilities.extend(
-                                ["trim_linked_av_pair_start", "trim_linked_av_pair_end"]
+                                [
+                                    "trim_linked_av_pair_start",
+                                    "trim_linked_av_pair_end",
+                                ]
                             )
+                            video_link, _video_link_size = _linked_userdata_id(video)
+                            audio_link, _audio_link_size = _linked_userdata_id(audio)
+                            if video_link == audio_link:
+                                capabilities.append("split_linked_av_pair")
                     except (AttributeError, TypeError, WfpError):
                         pass
                     seen.add(selector_key)
@@ -1307,6 +1363,7 @@ def list_edit_targets(path: Pathish) -> EditTargetsResult:
             "move_linked_av_pair",
             "trim_linked_av_pair_start",
             "trim_linked_av_pair_end",
+            "split_linked_av_pair",
         ],
         "title_card_templates": targets,
         "title_text_targets": title_targets,
@@ -1538,7 +1595,12 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
 
     if isinstance(
         operation,
-        (MoveLinkedAvPairOperation, TrimLinkedAvPairStartOperation, TrimLinkedAvPairEndOperation),
+        (
+            MoveLinkedAvPairOperation,
+            TrimLinkedAvPairStartOperation,
+            TrimLinkedAvPairEndOperation,
+            SplitLinkedAvPairOperation,
+        ),
     ):
         selector = {
             "video_clip_uid": operation.video_clip_uid,
@@ -1555,6 +1617,8 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
             else "trim_linked_av_pair_start"
             if isinstance(operation, TrimLinkedAvPairStartOperation)
             else "trim_linked_av_pair_end"
+            if isinstance(operation, TrimLinkedAvPairEndOperation)
+            else "split_linked_av_pair"
         )
         if operation_name not in target.get("capabilities", []):
             raise WfpError(
@@ -1582,7 +1646,7 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
                 new_start_ticks=operation.new_start_ticks,
             )
             requested_value = {"new_start_ticks": operation.new_start_ticks}
-        else:
+        elif isinstance(operation, TrimLinkedAvPairEndOperation):
             linked_preflight = preflight_linked_av_end_trim(
                 source_path,
                 video_clip_uid=operation.video_clip_uid,
@@ -1592,6 +1656,16 @@ def explain_edit_plan(source: Pathish, plan: PlanInput) -> EditPlanExplanation:
                 new_end_ticks=operation.new_end_ticks,
             )
             requested_value = {"new_end_ticks": operation.new_end_ticks}
+        else:
+            linked_preflight = preflight_linked_av_split(
+                source_path,
+                video_clip_uid=operation.video_clip_uid,
+                audio_clip_uid=operation.audio_clip_uid,
+                old_start_ticks=operation.old_start_ticks,
+                old_end_ticks=operation.old_end_ticks,
+                split_ticks=operation.split_ticks,
+            )
+            requested_value = {"split_ticks": operation.split_ticks}
         return {
             "api_version": EDIT_PLAN_API_VERSION,
             "plan_schema_version": parsed.schema_version,
@@ -1754,6 +1828,19 @@ def apply_edit_plan(
             old_start_ticks=operation.old_start_ticks,
             old_end_ticks=operation.old_end_ticks,
             new_end_ticks=operation.new_end_ticks,
+            expected_source_sha256=parsed.source_sha256,
+        )
+        created_cards = []
+        audit_valid = bool((writer_result.get("audit") or {}).get("valid"))
+    elif isinstance(operation, SplitLinkedAvPairOperation):
+        writer_result = split_linked_av_pair(
+            source,
+            output,
+            video_clip_uid=operation.video_clip_uid,
+            audio_clip_uid=operation.audio_clip_uid,
+            old_start_ticks=operation.old_start_ticks,
+            old_end_ticks=operation.old_end_ticks,
+            split_ticks=operation.split_ticks,
             expected_source_sha256=parsed.source_sha256,
         )
         created_cards = []

@@ -148,6 +148,14 @@ copy, saved it, preserved all four half ranges and exact `2.48` offsets, and
 reopened the saved copy. The writer remains limited to transition-free forward
 constant-1x pairs with the observed key-3 link identifier shape.
 
+On 2026-07-20, two additional copy-only splits from the 16-minute AI Tips
+timeline exercised primary tracks 3/4 and auxiliary tracks 9/10 with different
+source media. Both generated copies passed their audits, opened and saved in the
+same Filmora build, retained exact paired split boundaries and offsets after
+Save As, and reopened. This clears the evidence gate for edit-plan schema v5;
+it does not extend support to variable speed, transitions, or unobserved linked
+identifier encodings.
+
 ## Filmora-native round trip
 
 A previously generated, loadable title-card copy was opened in Filmora and saved
