@@ -80,6 +80,10 @@ Color Wheels then confirmed the `lift`, `gamma`, and `gain` parameter families
 for Shadows, Midtones, and Highlights. A red-component edit changed red,
 saturation, and derived lightness together, so wheel values remain read-only
 until the conversion model is complete.
+The Animation Keyframe Presets Fade In card was then applied with its actual
+double-click gesture and isolated through Undo/Redo. It stores a one-second
+0-to-100 opacity ramp inside `pipBuf.OpacityKeyFrame`; its opaque MD5 still
+blocks writer support.
 
 Still open:
 

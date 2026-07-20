@@ -297,6 +297,33 @@ parameters from one visible component; they are not independent RGB scalars.
 Green, blue, the outer luminance controls, negative values, and the full
 conversion model remain open. No writer is authorized.
 
+### Controlled Fade In keyframe preset
+
+Animation > Keyframe Presets > Fade In requires a double-click; a single click
+only selects the card and produced no semantic project change. A controlled
+apply, Undo, and Redo isolated one field inside the visual clip's `pipBuf`:
+
+```json
+{
+  "Opacity": 100.0,
+  "OpacityKeyFrame": {
+    "Version": 3,
+    "ParameterType": 0,
+    "keyframeSets": [
+      {"_time": 0.0, "Interpolation": 1, "_value": 0.0, "_rightDerivative": 0.00001},
+      {"_time": 10000000.0, "Interpolation": 1, "_value": 100.0, "_leftDerivative": 0.00001}
+    ],
+    "MD5": "712a3850c4397ef473f8cda30cbac193"
+  }
+}
+```
+
+Undo restored `OpacityKeyFrame` to an empty string. Redo restored the exact
+one-second 0-to-100 opacity ramp and increased `pipBufSize` from 131 to 415.
+This confirms opacity keyframe routing, timing units, interpolation, and the
+static opacity scale. The MD5 generation remains opaque, so preset/keyframe
+writing is not authorized.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from
