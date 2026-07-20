@@ -297,7 +297,7 @@ parameters from one visible component; they are not independent RGB scalars.
 Green, blue, the outer luminance controls, negative values, and the full
 conversion model remain open. No writer is authorized.
 
-### Controlled Fade In keyframe preset
+### Controlled Animation keyframe presets
 
 Animation > Keyframe Presets > Fade In requires a double-click; a single click
 only selects the card and produced no semantic project change. A controlled
@@ -323,6 +323,43 @@ one-second 0-to-100 opacity ramp and increased `pipBufSize` from 131 to 415.
 This confirms opacity keyframe routing, timing units, interpolation, and the
 static opacity scale. The MD5 generation remains opaque, so preset/keyframe
 writing is not authorized.
+
+The remaining built-in cards were then applied independently from the same
+Undo-produced no-preset baseline. This matters: applying presets sequentially
+does not reliably remove every keyframe from the previous preset. Filmora can
+therefore produce a hybrid payload if experiments are chained.
+
+Transform animation is stored on the clip's existing transform effect in
+`paramMapList`. Each entry has `key: 3`, a parameter name, and a JSON keyframe
+payload with the same `Version: 3`, `ParameterType: 0`, `Interpolation: 1`, and
+opaque `MD5` shape as opacity animation. Unlike `OpacityKeyFrame`, transform
+`_time` values are seconds rather than 10,000,000-tick units.
+
+The fixture already had Scale X/Y `70`, Position X `0.3828125`, Position Y
+`0.60416669`, and Rotation `0`. The independently captured presets produced:
+
+| Preset | One-second result |
+| --- | --- |
+| Fade Out | opacity `100 -> 0`; no transform map |
+| Slide Right | Position X `-0.6171875 -> 0.3828125` |
+| Slide Left | Position X `1.3828125 -> 0.3828125` |
+| Slide Up | Position Y `1.60416675 -> 0.60416669` |
+| Slide Down | Position Y `-0.39583331 -> 0.60416669` |
+| Vortex In | opacity `0 -> 100`, Scale X/Y `0 -> 70`, Rotation `360 -> 0` |
+| Vortex Out | opacity `100 -> 0`, Scale X/Y `70 -> 0`, Rotation `0 -> 360` |
+| Zoom In | Scale X/Y `0 -> 70`; opacity stays `100` |
+| Zoom Out | Scale X/Y `70 -> 0`; opacity stays `100` |
+
+Every transform preset also writes unchanged two-point maps for Scale X,
+Scale Y, Position X, Position Y, and Rotation. The Pause preset is different:
+it writes four points at seconds `0`, `1`, `2`, and `3`. Position X is
+`-0.6171875, 0.3828125, 0.3828125, 1.3828125`, which means slide in, hold for
+one second, then slide out. Its other transform values and all four opacity
+values remain constant.
+
+The observed +/- `1.0` position offsets are relative to this fixture's stored
+position, not yet proven as universal frame-width units. Derivatives and every
+payload MD5 must remain opaque. No animation writer is authorized.
 
 ### Controlled audio volume-gain change
 

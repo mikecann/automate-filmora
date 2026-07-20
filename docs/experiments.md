@@ -84,6 +84,11 @@ The Animation Keyframe Presets Fade In card was then applied with its actual
 double-click gesture and isolated through Undo/Redo. It stores a one-second
 0-to-100 opacity ramp inside `pipBuf.OpacityKeyFrame`; its opaque MD5 still
 blocks writer support.
+The other nine preset cards were then rerun independently from the same undone
+baseline. Fade Out reverses the opacity ramp. Slides, Vortex, Zoom, and Pause
+write transform `paramMapList` keyframes; Vortex also writes opacity. A chained
+trial retained stale transform keys from the previous card, so independent
+project reloads are required for trustworthy preset diffs.
 
 Still open:
 
