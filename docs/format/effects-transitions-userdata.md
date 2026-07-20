@@ -118,7 +118,14 @@ and effect UIDs during that Save As, so round-trip checks must follow the
 semantic effect state rather than require stable instance IDs.
 
 Only replacement of an existing, exactly-shaped horizontal-flip node is
-supported. First-use insertion and vertical flip remain unverified.
+supported. First-use insertion remains unverified.
+
+The same replacement shape is now confirmed for vertical flip. Its effect ID
+is `video/effect/vertical_filp`, retaining Filmora's `filp` spelling. On an
+existing node, off-to-on removed `enable: false` and changed key-101 data from
+`AAAAAA==` to `AQAAAA==`; all other semantic fields stayed fixed. First-use
+vertical insertion was observed only as incidental normalization during a
+different edit, so insertion remains unsupported.
 
 ### Controlled uniform corner radius change
 
@@ -136,6 +143,48 @@ Each parameter used `paramType: 3`, and the stored value matched the UI
 percentage. Both snapshots passed every format probe. This confirms the
 uniform repeat shape, but not the accepted range, first-use insertion, or
 independent per-corner editing. There is no writer yet.
+
+### Controlled anchor-point changes
+
+Basic > Anchor Point X repeated from 100 px to 200 px at 1280x720 by changing
+only `_Anchor_x` from `0.578125` to `0.65625`. Anchor Point Y repeated from
+100 px to 200 px by changing only `_Anchor_y` from
+`0.3611111044883728` to `0.2222222238779068`. Both live under
+`video/effect/transform` with `paramType: 3` and use the same conversion as
+Position:
+
+```text
+stored Anchor X = 0.5 + pixels / timeline width
+stored Anchor Y = 0.5 - pixels / timeline height
+```
+
+Both repeat snapshots passed every format probe. Existing-pair replacement is
+structurally understood; insertion and keyframed anchor points remain
+unsupported, and no writer has yet passed the Filmora round-trip gate.
+
+### Controlled linked uniform speed change
+
+With Ripple Edit and Maintain Pitch enabled, changing a linked A/V pair from
+1.25x to 1.50x updated both type-1 and type-2 clips symmetrically. Each clip's
+`tlEnd` and `outPoint` changed from `40000000` to `33333333`, while
+`speed.offsetEnd` stayed at the five-second source duration. The embedded
+`speed.speedParam` changed its first keyframe `_value`, matching derivative
+fields, and its opaque `MD5` field. Project and media timeline durations also
+changed to `33333333` ticks.
+
+The second keyframe remained a 1.0 sentinel at source time 5.0. The meaning and
+generation algorithm for the `MD5` value are not yet proven, so uniform-speed
+writing is not authorized despite the surrounding duration math being clear.
+
+### Controlled Basic Color temperature change
+
+Repeating Color > Basic > Temperature from 10 to 20 changed only
+`u_temperature.fxParam.unValue` from `10.0` to `20.0` under the AdjustColor
+effect with ID `662E16ED-4524-4D13-AAE9-11DBA0C63E17`. The parameter used
+`paramType: 3`, and the stored value matched the UI directly. The normalized
+effect also exposed enable flags for Color, white balance, Light, LUT, HSL,
+Vignette, and Auto Color, but their enum semantics are not inferred from this
+temperature experiment. First-use insertion and keyframed color remain open.
 
 ### Controlled audio volume-gain change
 
