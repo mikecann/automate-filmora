@@ -116,3 +116,12 @@ push, slide, fade, glitch, and audio-effect transition shapes generically.
 
 The practical result is broader read-only coverage and better experiment
 selection, not permission for a generic writer.
+
+## Local macOS backup refresh
+
+A later read-only survey of four exact-build copies from the local Filmora Mac
+backup (`15.6.4.11894`, macOS) found no evaluator failures. It added three
+effect families to the research inventory that were not present in the AI Tips
+fixture: `ColorBlur`, `Allpurpose Position`, and `Text Dropout`. It also exposed
+additional Push-family transition IDs. These are corpus observations only; the
+new effect payloads have not had controlled UI edits and remain non-writable.
