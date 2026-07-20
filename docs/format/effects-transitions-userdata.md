@@ -417,6 +417,25 @@ that its controls apply to a base-track clip. Static opacity and Blend Mode
 remain open until a controlled project contains a genuine upper-track overlay;
 the existing `pipBuf` field names are structural evidence only.
 
+### Controlled Background blur
+
+Basic > Background is separate from Compositing and did persist on the same
+base-track clip. Enabling the default Blur background added only:
+
+```json
+"backgroundFillEnable": true
+```
+
+The clip already carried `backgroundFillBluredness: 20` while Background was
+off. Selecting the visible 40% preset changed that integer from `20` to `40`.
+Turning Background off again removed `backgroundFillEnable` but retained the
+chosen `backgroundFillBluredness: 40`, so absence of the enable field is the
+observed off state and the last configuration survives.
+
+Other Background types, Blur Style, custom blur strength, color/image payloads,
+and Apply to All remain open. Existing-field replacement is structurally
+simple, but no Background writer has passed a Filmora round trip.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from

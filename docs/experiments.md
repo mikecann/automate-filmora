@@ -96,6 +96,9 @@ audio and video, integrate a new duration, and retime existing visual animation.
 A Basic Compositing opacity attempt on the sole base-track clip was a negative
 control: Filmora showed the UI but persisted no opacity change. Static opacity
 and blend-mode work now explicitly requires a true upper-track overlay fixture.
+The neighboring Background section did persist on the base-track clip: enable
+is represented by presence of `backgroundFillEnable: true`, while the selected
+blur strength remains in `backgroundFillBluredness` even after disabling it.
 
 Still open:
 

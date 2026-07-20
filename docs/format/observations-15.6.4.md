@@ -121,6 +121,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | Fade In keyframe preset | double-click preset, Undo, Redo | populated `pipBuf.OpacityKeyFrame` with a one-second 0-to-100 ramp; Undo restored an empty string; payload MD5 remains opaque |
 | remaining keyframe presets | apply each card independently from the same no-preset baseline | mapped Fade Out, Pause, four slide directions, Vortex In/Out, and Zoom In/Out across `pipBuf.OpacityKeyFrame` and transform `paramMapList`; sequential application can retain stale keys |
 | base-track compositing negative control | try Opacity 100 to 50 with text entry and slider drag | no persisted semantic change; a true upper-track overlay is required before mapping static opacity or blend modes |
+| Background blur enable and preset | enable default Blur, select 40%, disable | enable adds/removes `backgroundFillEnable: true`; preset changes retained `backgroundFillBluredness` from `20` to `40` |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |
