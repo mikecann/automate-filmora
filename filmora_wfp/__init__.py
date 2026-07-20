@@ -1,5 +1,7 @@
 """Evidence-driven tools for Wondershare Filmora project files."""
 
+__version__ = "0.13.4"
+
 from .analysis import inspect_project, list_titles, validate_project
 from .anchor import (
     audit_clip_anchor_copy,
