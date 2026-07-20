@@ -225,5 +225,3 @@ __all__ = [
     "normalized_position",
     "normalized_anchor",
 ]
-
-__version__ = "0.13.3"
