@@ -14,6 +14,11 @@ from .audio_fade_out import (
 )
 from .audit import audit_title_card_copy
 from .corpus import discover_projects, survey_projects
+from .corner_radius import (
+    audit_clip_corner_radius_copy,
+    preflight_clip_corner_radius,
+    replace_clip_corner_radius,
+)
 from .diffing import diff_projects
 from .edit_plan import (
     EDIT_PLAN_API_VERSION,
@@ -139,6 +144,7 @@ __all__ = [
     "TitleCardTemplateSelector",
     "apply_edit_plan",
     "audit_clip_fade_in_copy",
+    "audit_clip_corner_radius_copy",
     "audit_clip_fade_out_copy",
     "audit_clip_position_copy",
     "audit_clip_scale_copy",
@@ -176,6 +182,7 @@ __all__ = [
     "split_linked_av_pair",
     "project_sha256",
     "preflight_clip_rotation",
+    "preflight_clip_corner_radius",
     "preflight_clip_fade_in",
     "preflight_clip_fade_out",
     "preflight_clip_position",
@@ -187,6 +194,7 @@ __all__ = [
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
+    "replace_clip_corner_radius",
     "replace_clip_fade_in",
     "replace_clip_fade_out",
     "replace_clip_position",
@@ -201,4 +209,4 @@ __all__ = [
     "normalized_position",
 ]
 
-__version__ = "0.13.1"
+__version__ = "0.13.2"

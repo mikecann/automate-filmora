@@ -31,7 +31,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.transform", "horizontal flip", "writable", "direct guarded writer"),
     ("video.transform", "vertical flip", "writable", "direct guarded writer"),
     ("video.transform", "anchor point X and Y", "mapped", "pixel conversion repeat"),
-    ("video.transform", "uniform corner radius", "mapped", "10 to 20 repeat"),
+    ("video.transform", "uniform corner radius", "writable", "direct guarded writer"),
     ("video.transform", "path curve", "open", "UI inventoried only"),
     ("video.compositing", "static opacity", "open", "base-track negative control; overlay required"),
     ("video.compositing", "blend mode", "open", "overlay required"),

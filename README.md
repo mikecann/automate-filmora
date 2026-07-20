@@ -161,6 +161,9 @@ The tools can currently:
 - replace one already-present horizontal- or vertical-flip effect state through
   a Python copy-only writer. Declarative edit-plan exposure is intentionally
   pending.
+- replace one already-present positive uniform corner-radius quartet within the
+  verified 1–100 range through a guarded Python writer. Zero-removal remains a
+  separate unsupported operation.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template

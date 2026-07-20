@@ -58,7 +58,9 @@ generated off-to-on copy opened and survived Save As in Filmora. The first
 vertical-flip and compositing-opacity attempts were noisy and remained open at
 that point.
 Uniform Corner Radius produced a clean 10%-to-20% repeat across the four named
-corner parameters; range and first-use behavior remain open.
+corner parameters. Boundary probes later confirmed positive 1–100 replacement,
+while zero removes the quartet. A guarded 100-to-75 copy survived Filmora Save
+As; first-use and per-corner editing remain open.
 Anchor Point X and Y produced clean 100-to-200-pixel repeats using the same
 resolution conversion as Position. A linked uniform-speed 1.25x-to-1.50x
 repeat mapped the paired clip bounds and embedded speed payload, but its opaque

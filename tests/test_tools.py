@@ -18,6 +18,7 @@ from filmora_wfp import (
     WfpError,
     apply_edit_plan,
     audit_clip_fade_in_copy,
+    audit_clip_corner_radius_copy,
     audit_clip_fade_out_copy,
     audit_clip_position_copy,
     audit_clip_scale_copy,
@@ -44,6 +45,7 @@ from filmora_wfp import (
     preflight_linked_av_move,
     preflight_linked_av_start_trim,
     preflight_clip_fade_in,
+    preflight_clip_corner_radius,
     preflight_clip_fade_out,
     preflight_clip_position,
     preflight_clip_scale,
@@ -52,6 +54,7 @@ from filmora_wfp import (
     preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
+    replace_clip_corner_radius,
     replace_clip_fade_in,
     replace_clip_fade_out,
     replace_clip_position,
@@ -1457,6 +1460,74 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     clip_uid="vertical-flipped-video",
                     old_enabled=False,
                     new_enabled=True,
+                )
+
+    def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_radius(timeline):
+                parameters = [
+                    {"name": name, "fxParam": {"paramType": 3, "unValue": 20.0}}
+                    for name in ("LeftTop", "RightTop", "LeftBottom", "RightBottom")
+                ]
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "rounded-video",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "effectChainList": [{"effectList": [{
+                            "id": "video/effect/transform",
+                            "paramList": parameters,
+                        }]}],
+                    }
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_radius)
+            output = root / "output.wfp"
+            self.assertEqual(
+                preflight_clip_corner_radius(
+                    source,
+                    clip_uid="rounded-video",
+                    old_radius="20",
+                    new_radius="75",
+                )["matching_archive_occurrences"],
+                1,
+            )
+            result = replace_clip_corner_radius(
+                source,
+                output,
+                clip_uid="rounded-video",
+                old_radius="20",
+                new_radius="75",
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            self.assertTrue(
+                audit_clip_corner_radius_copy(
+                    source,
+                    output,
+                    clip_uid="rounded-video",
+                    old_radius="20",
+                    new_radius="75",
+                )["valid"]
+            )
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 4)
+            with self.assertRaisesRegex(WfpError, "greater than zero"):
+                preflight_clip_corner_radius(
+                    source,
+                    clip_uid="rounded-video",
+                    old_radius="20",
+                    new_radius="0",
+                )
+            with self.assertRaisesRegex(WfpError, "at most 100"):
+                preflight_clip_corner_radius(
+                    source,
+                    clip_uid="rounded-video",
+                    old_radius="20",
+                    new_radius="101",
                 )
 
     def test_replace_existing_clip_position_rejects_missing_stale_and_failed_audit(self) -> None:

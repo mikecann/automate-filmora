@@ -148,9 +148,15 @@ RightBottom: 10.0 -> 20.0
 ```
 
 Each parameter used `paramType: 3`, and the stored value matched the UI
-percentage. Both snapshots passed every format probe. This confirms the
-uniform repeat shape, but not the accepted range, first-use insertion, or
-independent per-corner editing. There is no writer yet.
+percentage. Later boundary probes confirmed positive values through 100.0.
+Entering zero removed all four parameters instead of storing zero, entering
+`-1` produced positive `1.0`, and the UI accepted both 99.0 and 100.0.
+
+A guarded copy-only writer now replaces an existing complete uniform quartet
+with another value greater than zero and at most 100. A generated 100-to-75
+copy opened in Filmora 15.6.4.11894; Save As retained all four `75.0` values and
+passed every format probe. Zero-removal, first-use insertion, and independent
+per-corner editing remain unsupported.
 
 ### Controlled anchor-point changes
 
