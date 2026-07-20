@@ -126,6 +126,13 @@ fixture: `ColorBlur`, `Allpurpose Position`, and `Text Dropout`. It also exposed
 additional Push-family transition IDs. These are corpus observations only; the
 new effect payloads have not had controlled UI edits and remain non-writable.
 
+The transition names were `Push Down` (`57EA5A5B-7EFA-4787-9199-31425E26AF00`),
+`Push Left` (`B5DA95B1-733E-43C1-9A8E-AA46921E46B0`), `push`
+(`925C36FB-9EE1-4fca-899F-549D8328F2DC`), `Diagonal in`
+(`ABAF9A79-678E-453D-94BC-AAC165DE2D45`), and `Cut Slide Transition 03`
+(`7DA29585-DDAB-4345-84C0-8F511FC7C17A`). Their duration payloads remain
+subject to the existing transition-family experiment boundary.
+
 The newly observed typed fields were `ColorBlur.uEclosion` (enum),
 `uEnhance`, `RBlurIntension`, and `BBlurIntension` (scalars), `Text Dropout`
 `Speed` and `Scale` (scalars), and `Allpurpose Position.position_y`, `rotate`,
