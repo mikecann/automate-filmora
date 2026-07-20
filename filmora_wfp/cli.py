@@ -20,6 +20,7 @@ from .edit_plan import (
     list_edit_targets,
 )
 from .evals import evaluate_project
+from .feature_coverage import feature_coverage
 from .mapping import map_project
 from .title_cards import clone_title_cards, load_title_card_spec
 
@@ -277,6 +278,32 @@ def _print_survey(result: Dict[str, Any]) -> None:
             print("  {0}: {1} projects".format(failure.get("probe"), failure.get("projects")))
 
 
+def _print_feature_coverage(result: Dict[str, Any]) -> None:
+    summary = result["summary"]
+    print(
+        "Filmora feature coverage: {0} features across {1} areas".format(
+            summary["total"], summary["areas"]
+        )
+    )
+    print(
+        "  "
+        + ", ".join(
+            "{0}={1}".format(status, count)
+            for status, count in summary["by_status"].items()
+        )
+    )
+    current_area = None
+    for feature in result["features"]:
+        if feature["area"] != current_area:
+            current_area = feature["area"]
+            print("{0}:".format(current_area))
+        print(
+            "  [{0}] {1} ({2})".format(
+                feature["status"], feature["feature"], feature["evidence"]
+            )
+        )
+
+
 def _print_edit_targets(result: Dict[str, Any]) -> None:
     source = result.get("source") or {}
     print(
@@ -474,6 +501,16 @@ def build_parser() -> argparse.ArgumentParser:
     survey_parser.add_argument("--json", action="store_true")
     survey_parser.add_argument("--output", help="Write the JSON survey to a new file")
 
+    coverage_parser = subparsers.add_parser(
+        "feature-coverage",
+        help="Report which Filmora surfaces are writable, mapped, partial, or open",
+    )
+    coverage_parser.add_argument(
+        "--status",
+        choices=("writable", "mapped", "partial", "open", "external_dependency"),
+    )
+    coverage_parser.add_argument("--json", action="store_true")
+
     clone_parser = subparsers.add_parser(
         "clone-title-cards",
         help="Clone an observed compound title-card template into a new project copy",
@@ -582,6 +619,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             else:
                 _dump_json(result) if args.json else _print_survey(result)
             return 0 if not (result.get("failures") or []) else 1
+        if args.command == "feature-coverage":
+            result = feature_coverage(args.status)
+            _dump_json(result) if args.json else _print_feature_coverage(result)
+            return 0
         if args.command == "clone-title-cards":
             result = clone_title_cards(
                 args.project,

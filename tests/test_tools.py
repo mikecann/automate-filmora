@@ -66,6 +66,7 @@ from filmora_wfp import (
     validate_project,
 )
 from filmora_wfp.cli import main as cli_main
+from filmora_wfp.feature_coverage import feature_coverage
 
 from tests.helpers import write_cloneable_title_project, write_project
 
@@ -135,6 +136,28 @@ def _replace_text_plan(source: Path) -> dict:
 
 
 class FilmoraProjectToolsTest(unittest.TestCase):
+    def test_feature_coverage_has_unique_curated_rows_and_status_totals(self) -> None:
+        result = feature_coverage()
+        features = result["features"]
+        identities = [(item["area"], item["feature"]) for item in features]
+        self.assertEqual(len(identities), len(set(identities)))
+        self.assertEqual(result["summary"]["total"], len(features))
+        self.assertEqual(
+            sum(result["summary"]["by_status"].values()), len(features)
+        )
+        self.assertIn("writable", result["summary"]["by_status"])
+        self.assertIn("open", result["summary"]["by_status"])
+
+    def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(cli_main(["feature-coverage", "--status", "open", "--json"]), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["filter"], "open")
+        self.assertTrue(result["features"])
+        self.assertTrue(all(item["status"] == "open" for item in result["features"]))
+        self.assertGreater(result["summary"]["total"], len(result["features"]))
+
     def test_v3_edit_plan_discovers_and_applies_rotation_and_transition_operations(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

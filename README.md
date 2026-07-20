@@ -28,6 +28,8 @@ python3 -m filmora_wfp inspect "/path/to/project.wfp"
 python3 -m filmora_wfp map "/path/to/project.wfp"
 python3 -m filmora_wfp eval-format "/path/to/project.wfp"
 python3 -m filmora_wfp survey "/path/to/project-folder" --reference-version 15.6.4.11894
+python3 -m filmora_wfp feature-coverage
+python3 -m filmora_wfp feature-coverage --status open --json
 python3 -m filmora_wfp titles "/path/to/project.wfp"
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
 python3 -m filmora_wfp edit-targets "/path/to/project.wfp"
