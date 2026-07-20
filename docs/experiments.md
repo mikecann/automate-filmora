@@ -93,6 +93,9 @@ The Speed panel then confirmed the inverted `speedWithPitch` flag, linked
 reverse flags, animation mirroring during reverse, and six stock speed-ramp
 curves. Speed ramps replace uniform settings, write identical curves to linked
 audio and video, integrate a new duration, and retime existing visual animation.
+A Basic Compositing opacity attempt on the sole base-track clip was a negative
+control: Filmora showed the UI but persisted no opacity change. Static opacity
+and blend-mode work now explicitly requires a true upper-track overlay fixture.
 
 Still open:
 

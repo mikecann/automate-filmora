@@ -403,6 +403,20 @@ The observed +/- `1.0` position offsets are relative to this fixture's stored
 position, not yet proven as universal frame-width units. Derivatives and every
 payload MD5 must remain opaque. No animation writer is authorized.
 
+### Compositing control caveat
+
+Filmora displayed Basic > Compositing > Blend Mode and Opacity for the only
+visual clip on the base video track. Attempts to enter or drag Opacity from 100
+to 50 produced no persisted semantic change: Save As changed only the known
+timeline save token and `pipBuf.Opacity` remained `100.0`. Dragging the media
+asset into blank space above that track also did not auto-create an overlay
+track in this layout.
+
+This negative control matters. Visibility of the Compositing UI is not proof
+that its controls apply to a base-track clip. Static opacity and Blend Mode
+remain open until a controlled project contains a genuine upper-track overlay;
+the existing `pipBuf` field names are structural evidence only.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from
