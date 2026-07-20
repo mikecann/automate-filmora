@@ -110,8 +110,29 @@ A narrow writer changed an already-present value from `1.0` to `1.5` with one
 semantic diff. Filmora 15.6.4.11894 displayed `1.50 s` on the generated copy,
 Save As retained `1.5`, all format probes passed, and a full quit/relaunch
 reopened the saved copy with `1.50 s` still visible. This proves positive
-replacement up to the clip duration only. Insertion, zero/removal, fade-out,
-curve shape, and automation remain outside the writer contract.
+replacement up to the clip duration only. Insertion, zero/removal, curve shape,
+and automation remain outside the writer contract.
+
+### Controlled audio fade-out change
+
+On the same disposable type `2` audio clip, the first Basic Audio fade-out
+change from `0.00 s` to `1.00 s` added a second parameter under
+`audio/effect/fade`:
+
+```json
+{
+  "name": "FadeOutTime",
+  "fxParam": {"paramType": 2, "unValue": 1.0}
+}
+```
+
+The normalized repeat from `1.00 s` to `2.00 s` changed only that parameter's
+`fxParam.unValue` plus known save metadata. A narrow writer then changed the
+existing value to `1.5` with one semantic diff. Filmora 15.6.4.11894 displayed
+`1.50 s`, Save As retained the value, and a full quit/relaunch reopened the
+saved copy with `1.50 s` still visible. This proves independent positive
+replacement up to clip duration. Insertion, zero/removal, curve shape, and
+automation remain outside the writer contract.
 
 ## Transitions
 

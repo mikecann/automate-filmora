@@ -1,7 +1,7 @@
 # Declarative edit-plan API
 
-Status: API version `7`, latest plan schema version `7`. Schema versions `1`
-through `6` remain supported unchanged. This is a strict orchestration
+Status: API version `8`, latest plan schema version `8`. Schema versions `1`
+through `7` remain supported unchanged. This is a strict orchestration
 layer over mutations that have already passed a Filmora load, save, and reopen
 experiment. It is not a generic JSON patcher.
 
@@ -13,8 +13,9 @@ adds `move_linked_av_pair`, `trim_linked_av_pair_start`, and
 `trim_linked_av_pair_end`. Schema version 5 retains those operations and adds
 `split_linked_av_pair`. Schema version 6 retains all earlier operations and adds
 `replace_clip_volume_gain`. Schema version 7 retains all earlier operations and
-adds `replace_clip_fade_in`. A plan contains exactly one operation, although one
-clone operation can create many cards. Unsupported
+adds `replace_clip_fade_in`. Schema version 8 retains all earlier operations and
+adds `replace_clip_fade_out`. A plan contains exactly one operation, although
+one clone operation can create many cards. Unsupported
 operation names, unknown fields, stale projects, and lossy values are rejected
 before an output file is created.
 
@@ -35,6 +36,8 @@ before an output file is created.
 - Fade-in replacement requires an already-present positive `FadeInTime`
   parameter and refuses values beyond the clip duration. Missing parameters and
   replacement with zero remain unsupported.
+- Fade-out replacement has the same restrictions for `FadeOutTime`; it does not
+  insert a missing parameter or use zero to remove one.
 - Transition operations require the exact observed linked Dissolve/audio-fade
   IDs, matched clip and transition bounds, and both discovered owner UIDs.
 - Linked A/V operations require a transition-free type-1/type-2 pair with the
@@ -68,8 +71,9 @@ so always rediscover targets and use the SHA-256 from the same response.
 
 Existing supported rotations appear under `rotation_targets`. Exact volume
 parameters appear under `volume_gain_targets`, and exact positive fade-in
-parameters appear under `fade_in_targets`. Exact linked Dissolve/audio-fade pairs
-appear under `linked_transition_targets`. These lists
+parameters appear under `fade_in_targets`. Exact positive fade-out parameters
+appear under `fade_out_targets`. Exact linked Dissolve/audio-fade pairs appear
+under `linked_transition_targets`. These lists
 deliberately omit structurally ambiguous or unsupported effects and transitions.
 Unambiguous transition-free source pairs appear under `linked_av_targets` with a
 per-target `capabilities` list. Copy the complete selector from that response.
@@ -297,12 +301,32 @@ Copy the selector from `fade_in_targets` and keep `new_fade_in` positive and no
 greater than the reported `max_fade_in`. A zero-value clip usually omits the
 parameter; schema v7 does not insert or remove it.
 
+Schema version 8 changes one existing audio-clip fade-out duration in seconds:
+
+```json
+{
+  "schema_version": 8,
+  "source": {"sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+  "operations": [{
+    "op": "replace_clip_fade_out",
+    "target": {
+      "clip_uid": "audio-clip-uid",
+      "fade_out": "1.0"
+    },
+    "new_fade_out": "1.5"
+  }]
+}
+```
+
+Copy the selector from `fade_out_targets` and keep `new_fade_out` positive and
+no greater than `max_fade_out`. Schema v8 is replacement-only.
+
 Successful edit-plan commands exit with code `0`. A rejected plan exits with code
 `2`. With `--json`, the error is emitted to stderr as a versioned object:
 
 ```json
 {
-  "api_version": 7,
+  "api_version": 8,
   "error": {
     "code": "wfp_error",
     "message": "Source fingerprint changed: ..."
@@ -322,7 +346,7 @@ from filmora_wfp import (
 )
 
 targets = list_edit_targets("project.wfp")
-schema = edit_plan_schema()  # latest, currently v7
+schema = edit_plan_schema()  # latest, currently v8
 schema_v1 = edit_plan_schema(1)
 schema_v2 = edit_plan_schema(2)
 plan = load_edit_plan("work/add-cards.json")
@@ -336,7 +360,7 @@ assert result["verification"]["source_aware_audit_valid"] is True
 Typed immutable input models are also exported: `EditPlan`,
 `CloneTitleCardsOperation`, `ReplaceTitleTextOperation`,
 `ReplaceClipRotationOperation`, `ReplaceClipVolumeGainOperation`,
-`ReplaceClipFadeInOperation`,
+`ReplaceClipFadeInOperation`, `ReplaceClipFadeOutOperation`,
 `ReplaceLinkedTransitionDurationOperation`,
 `RemoveLinkedTransitionOperation`, `MoveLinkedAvPairOperation`,
 `TrimLinkedAvPairStartOperation`, `TrimLinkedAvPairEndOperation`,
@@ -359,8 +383,9 @@ The immutable machine-readable schemas are
 [`edit-plan-v3.schema.json`](../filmora_wfp/schemas/edit-plan-v3.schema.json),
 [`edit-plan-v4.schema.json`](../filmora_wfp/schemas/edit-plan-v4.schema.json),
 [`edit-plan-v5.schema.json`](../filmora_wfp/schemas/edit-plan-v5.schema.json),
-[`edit-plan-v6.schema.json`](../filmora_wfp/schemas/edit-plan-v6.schema.json), and
-[`edit-plan-v7.schema.json`](../filmora_wfp/schemas/edit-plan-v7.schema.json).
+[`edit-plan-v6.schema.json`](../filmora_wfp/schemas/edit-plan-v6.schema.json),
+[`edit-plan-v7.schema.json`](../filmora_wfp/schemas/edit-plan-v7.schema.json), and
+[`edit-plan-v8.schema.json`](../filmora_wfp/schemas/edit-plan-v8.schema.json).
 All are included in the installed wheel.
 
 ## Adding another operation

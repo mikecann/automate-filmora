@@ -20,7 +20,7 @@ actual project and Filmora build before asserting field semantics.
   named change. Current writers cover the observed compound title-card graph,
   same-serialization-length title replacement, and replacement of an existing
   video Rotation value, an existing audio `VolumeGain` value, and an existing
-  positive audio `FadeInTime` value, plus duration
+  positive audio `FadeInTime` or `FadeOutTime` value, plus duration
   replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
   move that stays inside the declared project duration without same-track
@@ -139,8 +139,9 @@ Schema version 5 additionally exposes `split_linked_av_pair` for targets with
 the verified link-identifier shape. Schema version 6 exposes
 `replace_clip_volume_gain` only for existing parameters returned in
 `volume_gain_targets`. Schema version 7 exposes `replace_clip_fade_in` only for
-existing parameters returned in `fade_in_targets`. Schemas 1 through 6 remain
-immutable and supported.
+existing parameters returned in `fade_in_targets`. Schema version 8 exposes
+`replace_clip_fade_out` only for existing parameters returned in
+`fade_out_targets`. Schemas 1 through 7 remain immutable and supported.
 
 1. Add a targeted command that refuses identical input/output paths.
 2. Copy the input and change the minimum JSON fields.

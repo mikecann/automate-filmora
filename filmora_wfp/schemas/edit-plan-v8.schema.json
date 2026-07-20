@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:automate-filmora:edit-plan:v8",
+  "title": "Filmora edit plan v8",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source", "operations"],
+  "properties": {
+    "schema_version": {"const": 8},
+    "description": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {"sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"}}
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/cloneTitleCardsOperation"},
+          {"$ref": "#/$defs/replaceTitleTextOperation"},
+          {"$ref": "#/$defs/replaceClipRotationOperation"},
+          {"$ref": "#/$defs/replaceClipVolumeGainOperation"},
+          {"$ref": "#/$defs/replaceClipFadeInOperation"},
+          {"$ref": "#/$defs/replaceClipFadeOutOperation"},
+          {"$ref": "#/$defs/replaceLinkedTransitionDurationOperation"},
+          {"$ref": "#/$defs/removeLinkedTransitionOperation"},
+          {"$ref": "#/$defs/moveLinkedAvPairOperation"},
+          {"$ref": "#/$defs/trimLinkedAvPairStartOperation"},
+          {"$ref": "#/$defs/trimLinkedAvPairEndOperation"},
+          {"$ref": "#/$defs/splitLinkedAvPairOperation"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "positiveDecimal": {
+      "oneOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "string", "pattern": "^(?:0*[1-9][0-9]*(?:\\.[0-9]+)?|0*\\.(?:[0-9]*[1-9][0-9]*))$"}
+      ]
+    },
+    "finiteDecimal": {
+      "oneOf": [
+        {"type": "number"},
+        {"type": "string", "pattern": "^-?(?:0|[0-9]+(?:\\.[0-9]+)?|0?\\.[0-9]+)$"}
+      ]
+    },
+    "nonNegativeDecimal": {
+      "oneOf": [
+        {"type": "number", "minimum": 0},
+        {"type": "string", "pattern": "^(?:0|[0-9]+(?:\\.[0-9]+)?|0?\\.[0-9]+)$"}
+      ]
+    },
+    "templateSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timeline_id"],
+          "properties": {"timeline_id": {"type": "integer", "minimum": 0}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heading", "subheading"],
+          "properties": {
+            "heading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "subheading": {"type": "string", "minLength": 1, "pattern": "\\S"}
+          }
+        }
+      ]
+    },
+    "position": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ticks"],
+          "properties": {"ticks": {"type": "integer", "minimum": 0}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seconds"],
+          "properties": {"seconds": {"$ref": "#/$defs/nonNegativeDecimal"}}
+        }
+      ]
+    },
+    "titleCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "heading", "subheading", "heading_font_size", "heading_scale_x", "subheading_font_size", "subheading_scale_x"],
+      "properties": {
+        "at": {"$ref": "#/$defs/position"},
+        "heading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "subheading": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "heading_font_size": {"$ref": "#/$defs/positiveDecimal"},
+        "heading_scale_x": {"$ref": "#/$defs/positiveDecimal"},
+        "subheading_font_size": {"$ref": "#/$defs/positiveDecimal"},
+        "subheading_scale_x": {"$ref": "#/$defs/positiveDecimal"}
+      }
+    },
+    "cloneTitleCardsOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "template", "cards"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "clone_title_cards"},
+        "template": {"$ref": "#/$defs/templateSelector"},
+        "cards": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/titleCard"}}
+      }
+    },
+    "replaceTitleTextOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_text"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_title_text"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "text"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "text": {"type": "string", "minLength": 1, "pattern": "\\S"}
+          }
+        },
+        "new_text": {"type": "string", "minLength": 1, "pattern": "\\S"}
+      }
+    },
+    "replaceClipRotationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_rotation"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_clip_rotation"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "rotation"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "rotation": {"$ref": "#/$defs/finiteDecimal"}
+          }
+        },
+        "new_rotation": {"$ref": "#/$defs/finiteDecimal"}
+      }
+    },
+    "replaceClipVolumeGainOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_volume_gain"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_clip_volume_gain"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "volume_gain"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "volume_gain": {"$ref": "#/$defs/finiteDecimal"}
+          }
+        },
+        "new_volume_gain": {"$ref": "#/$defs/finiteDecimal"}
+      }
+    },
+    "replaceClipFadeInOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_fade_in"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_clip_fade_in"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "fade_in"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "fade_in": {"$ref": "#/$defs/positiveDecimal"}
+          }
+        },
+        "new_fade_in": {"$ref": "#/$defs/positiveDecimal"}
+      }
+    },
+    "replaceClipFadeOutOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_fade_out"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_clip_fade_out"},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clip_uid", "fade_out"],
+          "properties": {
+            "clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "fade_out": {"$ref": "#/$defs/positiveDecimal"}
+          }
+        },
+        "new_fade_out": {"$ref": "#/$defs/positiveDecimal"}
+      }
+    },
+    "linkedTransitionTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["video_clip_uid", "audio_clip_uid", "duration_ticks"],
+      "properties": {
+        "video_clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "audio_clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "duration_ticks": {"type": "integer", "minimum": 1}
+      }
+    },
+    "replaceLinkedTransitionDurationOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_duration_ticks"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "replace_linked_transition_duration"},
+        "target": {"$ref": "#/$defs/linkedTransitionTarget"},
+        "new_duration_ticks": {"type": "integer", "minimum": 1}
+      }
+    },
+    "removeLinkedTransitionOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "remove_linked_transition"},
+        "target": {"$ref": "#/$defs/linkedTransitionTarget"}
+      }
+    },
+    "linkedAvTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["video_clip_uid", "audio_clip_uid", "start_ticks", "end_ticks"],
+      "properties": {
+        "video_clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "audio_clip_uid": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "start_ticks": {"type": "integer", "minimum": 0},
+        "end_ticks": {"type": "integer", "minimum": 1}
+      }
+    },
+    "moveLinkedAvPairOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_start_ticks"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "move_linked_av_pair"},
+        "target": {"$ref": "#/$defs/linkedAvTarget"},
+        "new_start_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "trimLinkedAvPairStartOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_start_ticks"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "trim_linked_av_pair_start"},
+        "target": {"$ref": "#/$defs/linkedAvTarget"},
+        "new_start_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "trimLinkedAvPairEndOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "new_end_ticks"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "trim_linked_av_pair_end"},
+        "target": {"$ref": "#/$defs/linkedAvTarget"},
+        "new_end_ticks": {"type": "integer", "minimum": 0}
+      }
+    },
+    "splitLinkedAvPairOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "target", "split_ticks"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "op": {"const": "split_linked_av_pair"},
+        "target": {"$ref": "#/$defs/linkedAvTarget"},
+        "split_ticks": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

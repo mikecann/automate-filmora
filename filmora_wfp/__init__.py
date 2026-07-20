@@ -7,6 +7,11 @@ from .audio_fade import (
     preflight_clip_fade_in,
     replace_clip_fade_in,
 )
+from .audio_fade_out import (
+    audit_clip_fade_out_copy,
+    preflight_clip_fade_out,
+    replace_clip_fade_out,
+)
 from .audit import audit_title_card_copy
 from .corpus import discover_projects, survey_projects
 from .diffing import diff_projects
@@ -25,6 +30,7 @@ from .edit_plan import (
     ReplaceClipRotationOperation,
     ReplaceClipVolumeGainOperation,
     ReplaceClipFadeInOperation,
+    ReplaceClipFadeOutOperation,
     ReplaceLinkedTransitionDurationOperation,
     RemoveLinkedTransitionOperation,
     MoveLinkedAvPairOperation,
@@ -92,6 +98,7 @@ __all__ = [
     "ReplaceClipRotationOperation",
     "ReplaceClipVolumeGainOperation",
     "ReplaceClipFadeInOperation",
+    "ReplaceClipFadeOutOperation",
     "ReplaceLinkedTransitionDurationOperation",
     "RemoveLinkedTransitionOperation",
     "MoveLinkedAvPairOperation",
@@ -107,6 +114,7 @@ __all__ = [
     "TitleCardTemplateSelector",
     "apply_edit_plan",
     "audit_clip_fade_in_copy",
+    "audit_clip_fade_out_copy",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
@@ -140,12 +148,14 @@ __all__ = [
     "project_sha256",
     "preflight_clip_rotation",
     "preflight_clip_fade_in",
+    "preflight_clip_fade_out",
     "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
     "replace_title_text",
     "replace_clip_rotation",
     "replace_clip_fade_in",
+    "replace_clip_fade_out",
     "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
@@ -153,4 +163,4 @@ __all__ = [
     "validate_project",
 ]
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"

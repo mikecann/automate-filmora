@@ -18,6 +18,7 @@ from filmora_wfp import (
     WfpError,
     apply_edit_plan,
     audit_clip_fade_in_copy,
+    audit_clip_fade_out_copy,
     audit_linked_av_split_copy,
     audit_clip_volume_gain_copy,
     audit_title_text_copy,
@@ -38,10 +39,12 @@ from filmora_wfp import (
     preflight_linked_av_move,
     preflight_linked_av_start_trim,
     preflight_clip_fade_in,
+    preflight_clip_fade_out,
     preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
     replace_clip_fade_in,
+    replace_clip_fade_out,
     replace_clip_volume_gain,
     replace_linked_transition_duration,
     replace_title_text,
@@ -178,7 +181,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
             digest = project_sha256(source)
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 7)
+            self.assertEqual(targets["api_version"], 8)
             self.assertEqual(
                 targets["rotation_targets"][0]["selector"],
                 {"clip_uid": "video-source-clip", "rotation": "10.0"},
@@ -720,7 +723,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 "end_ticks": 60_000_000,
             }
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 7)
+            self.assertEqual(targets["api_version"], 8)
             self.assertEqual(len(targets["linked_av_targets"]), 1)
             self.assertEqual(targets["linked_av_targets"][0]["selector"], selector)
             self.assertEqual(
@@ -882,7 +885,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 ],
             }
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 7)
+            self.assertEqual(explanation["api_version"], 8)
             self.assertFalse(explanation["writes_performed"])
             self.assertEqual(explanation["operations"][0]["op"], "split_linked_av_pair")
             self.assertEqual(explanation["operations"][0]["split_ticks"], 50_000_000)
@@ -1452,6 +1455,175 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     )
             self.assertFalse(rejected.exists())
 
+    def test_replace_existing_clip_fade_out_changes_only_selected_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_fade_out(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(
+                    {
+                        "type": 2,
+                        "thisUId": "audio-clip",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 90_000_000,
+                        "effectChainList": [
+                            {
+                                "effectList": [
+                                    {
+                                        "id": "audio/effect/fade",
+                                        "paramList": [
+                                            {
+                                                "name": "FadeOutTime",
+                                                "fxParam": {
+                                                    "paramType": 2,
+                                                    "unValue": 1.0,
+                                                },
+                                            }
+                                        ],
+                                    }
+                                ]
+                            }
+                        ],
+                    }
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_fade_out)
+            output = root / "output.wfp"
+            result = replace_clip_fade_out(
+                source,
+                output,
+                clip_uid="audio-clip",
+                old_fade_out=1,
+                new_fade_out=2,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertEqual(result["audit"]["details"]["fade_out_occurrences_changed"], 1)
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 1)
+            self.assertTrue(
+                audit_clip_fade_out_copy(
+                    source,
+                    output,
+                    clip_uid="audio-clip",
+                    old_fade_out=1,
+                    new_fade_out=2,
+                )["valid"]
+            )
+            self.assertEqual(
+                preflight_clip_fade_out(
+                    source,
+                    clip_uid="audio-clip",
+                    old_fade_out=1,
+                    new_fade_out="1.5",
+                )["matching_archive_occurrences"],
+                1,
+            )
+
+            targets = list_edit_targets(source)
+            self.assertEqual(
+                targets["fade_out_targets"][0]["selector"],
+                {"clip_uid": "audio-clip", "fade_out": "1.0"},
+            )
+            self.assertEqual(targets["fade_out_targets"][0]["max_fade_out"], "5")
+            plan = {
+                "schema_version": 8,
+                "source": {"sha256": project_sha256(source)},
+                "operations": [
+                    {
+                        "op": "replace_clip_fade_out",
+                        "target": targets["fade_out_targets"][0]["selector"],
+                        "new_fade_out": "1.5",
+                    }
+                ],
+            }
+            explanation = explain_edit_plan(source, plan)
+            self.assertFalse(explanation["writes_performed"])
+            plan_output = root / "plan-output.wfp"
+            plan_result = apply_edit_plan(source, plan_output, plan)
+            self.assertTrue(plan_result["verification"]["source_aware_audit_valid"])
+            self.assertEqual(len(diff_projects(source, plan_output)["json_changes"]), 1)
+
+            v7_plan = dict(plan)
+            v7_plan["schema_version"] = 7
+            with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
+                load_edit_plan(v7_plan)
+
+    def test_replace_existing_clip_fade_out_rejects_unsafe_targets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_audio_clip(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append(
+                    {
+                        "type": 2,
+                        "thisUId": "audio-clip",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 90_000_000,
+                    }
+                )
+
+            missing = _rewrite_main_timeline(base, root / "missing.wfp", add_audio_clip)
+            with self.assertRaisesRegex(WfpError, "exactly one existing FadeOutTime"):
+                replace_clip_fade_out(
+                    missing,
+                    root / "missing-output.wfp",
+                    clip_uid="audio-clip",
+                    old_fade_out=1,
+                    new_fade_out=2,
+                )
+
+            def add_fade_out(timeline):
+                clip = timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][-1]
+                clip["effectChainList"] = [
+                    {
+                        "effectList": [
+                            {
+                                "id": "audio/effect/fade",
+                                "paramList": [
+                                    {"name": "FadeOutTime", "fxParam": {"unValue": 1.0}}
+                                ],
+                            }
+                        ]
+                    }
+                ]
+
+            source = _rewrite_main_timeline(missing, root / "source.wfp", add_fade_out)
+            for unsafe in (0, -1, "NaN", 6):
+                with self.assertRaises(WfpError):
+                    replace_clip_fade_out(
+                        source,
+                        root / ("unsafe-{0}.wfp".format(str(unsafe))),
+                        clip_uid="audio-clip",
+                        old_fade_out=1,
+                        new_fade_out=unsafe,
+                    )
+            with self.assertRaisesRegex(WfpError, "Source fingerprint changed"):
+                replace_clip_fade_out(
+                    source,
+                    root / "stale-hash.wfp",
+                    clip_uid="audio-clip",
+                    old_fade_out=1,
+                    new_fade_out=2,
+                    expected_source_sha256="0" * 64,
+                )
+
+            rejected = root / "rejected.wfp"
+            with patch(
+                "filmora_wfp.audio_fade_out.audit_clip_fade_out_copy",
+                return_value={"valid": False, "errors": ["controlled fade-out audit failure"]},
+            ):
+                with self.assertRaisesRegex(WfpError, "controlled fade-out audit failure"):
+                    replace_clip_fade_out(
+                        source,
+                        rejected,
+                        clip_uid="audio-clip",
+                        old_fade_out=1,
+                        new_fade_out=2,
+                    )
+            self.assertFalse(rejected.exists())
+
     def test_replace_title_text_changes_only_equal_length_mirrors(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1528,7 +1700,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 7)
+            self.assertEqual(targets["api_version"], 8)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -1615,11 +1787,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema_v6["$defs"]["replaceClipVolumeGainOperation"]["properties"]["op"]["const"],
                 "replace_clip_volume_gain",
             )
-            schema_v7 = edit_plan_schema()
+            schema_v7 = edit_plan_schema(7)
             self.assertEqual(schema_v7["properties"]["schema_version"]["const"], 7)
             self.assertEqual(
                 schema_v7["$defs"]["replaceClipFadeInOperation"]["properties"]["op"]["const"],
                 "replace_clip_fade_in",
+            )
+            schema_v8 = edit_plan_schema()
+            self.assertEqual(schema_v8["properties"]["schema_version"]["const"], 8)
+            self.assertEqual(
+                schema_v8["$defs"]["replaceClipFadeOutOperation"]["properties"]["op"]["const"],
+                "replace_clip_fade_out",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -1631,7 +1809,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 7)
+            self.assertEqual(explanation["api_version"], 8)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -1770,7 +1948,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 7)
+            self.assertEqual(error["api_version"], 8)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 

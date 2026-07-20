@@ -333,8 +333,32 @@ API version 7 and immutable plan schema version 7 expose
 `replace_clip_fade_in`. Target discovery lists only audio clips with exactly one
 existing positive `FadeInTime` not exceeding the clip duration. The writer also
 rejects zero, negative, stale, missing, and over-duration values. Insertion,
-removal by setting zero, and fade-out remain unsupported. Schemas 1 through 6
-remain unchanged and supported.
+and removal by setting zero remain unsupported. Schemas 1 through 6 remain
+unchanged and supported.
+
+## Existing audio clip fade-out acceptance
+
+On the same disposable five-second clip, changing Basic Audio fade-out from
+`0.00 s` to `1.00 s` added `FadeOutTime` beside the existing `FadeInTime` under
+the `audio/effect/fade` node. That first use also performed Filmora save
+normalization, so it is evidence for structure but not insertion safety.
+
+Repeating the edit from `1.00 s` to `2.00 s` isolated one semantic property:
+`FadeOutTime.fxParam.unValue` changed from `1.0` to `2.0`, apart from the known
+per-save timeline token and project metadata. The parameter uses `paramType: 2`
+and stores the UI duration in seconds independently of fade-in.
+
+The replacement-only writer changed `1.0` to `1.5` with exactly one semantic
+diff. Filmora 15.6.4.11894 displayed `1.50 s`, saved the generated project to a
+new path, fully quit, relaunched, reopened that copy, and still displayed
+`1.50 s`. Format evaluation also passed on both generated and Filmora-saved
+copies.
+
+API version 8 and immutable plan schema version 8 expose
+`replace_clip_fade_out`. Target discovery requires exactly one existing positive
+`FadeOutTime` no greater than clip duration. The writer rejects zero, negative,
+stale, missing, and over-duration values. Insertion and removal remain
+unsupported. Schemas 1 through 7 remain unchanged and supported.
 
 ## Existing linked A/V split acceptance
 
