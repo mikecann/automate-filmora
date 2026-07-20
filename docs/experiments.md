@@ -1,5 +1,14 @@
 # Reverse-engineering experiments
 
+### 2026-07-20: Basic Color first-use Exposure
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: selected a clip with no Color effect, opened Color > Basic > Light, set Exposure from 0 to 10, then used Save As.
+- Before: `work/research/2026-07-15/ui-experiments/203-anchor-generated-roundtrip.wfp`
+- After: `work/research/2026-07-15/ui-experiments/204-exposure-first-use-10.wfp`
+- Evidence: one `AdjustColor` effect was inserted with `u_exposure` as a direct `paramType: 3` scalar. Normal Color and Mask holding chains were also materialized. `eval-format` passed.
+- Boundary: this confirms first-use insertion for Basic Color only, not a generic writer.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol

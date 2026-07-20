@@ -276,7 +276,19 @@ change. All 17 repeat pairs, including Temperature, passed the format eval.
 
 These observations prove existing-parameter replacement, not the valid range
 of every control, section enable/disable semantics, presets, auto white
-balance, LUT selection, HSL, Curves, or first-use effect insertion.
+balance, LUT selection, HSL, or Curves.
+
+### Controlled Basic Color first-use insertion
+
+Applying Color > Basic > Light > Exposure to a clip with no prior color effect
+inserted one `AdjustColor` effect in the existing color effect chain. Filmora
+also materialized its normal Color and Mask holding chains, but did not add
+media or duplicate the clip. The inserted effect used the same stable ID and
+parameter shape as the repeat experiments: `u_exposure` was a `paramType: 3`
+scalar storing the UI value directly (`10.0`). The generated project passed
+the format evaluator and Filmora Save As round trip. This confirms first-use
+insertion for Basic Color/Light only; other color surfaces and keyframes remain
+unverified.
 
 ### Controlled HSL channel changes
 

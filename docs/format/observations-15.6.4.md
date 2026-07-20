@@ -111,6 +111,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | stock speed ramps | independently apply Montage, Hero, Bullet Time, Jumper, Flash In, and Flash Out | mapped identical linked A/V interpolation-9 curves and curve-integrated durations; presets clear reverse/pitch mode and retime visual animation |
 | Basic Color temperature repeat | change existing Temperature from 10 to 20 | changed only AdjustColor `u_temperature` from `10.0` to `20.0` plus save metadata |
 | Basic Color scalar sweep | repeat Tint, Vibrance, Saturation, Exposure, Brightness, Contrast, Highlight, Shadow, White, and Black | each changed exactly one named AdjustColor scalar from `10.0` to `20.0` |
+| Basic Color first use | set Exposure to 10 on a clip with no Color effect, then Save As | inserted one `AdjustColor` effect with `u_exposure=10.0`; generated file passed eval and Filmora round trip |
 | Basic Sharpen repeat | change Sharpen from 10 to 20 | changed only separate Sharpen effect parameter `amount` from `10.0` to `20.0` |
 | Basic Vignette scalar sweep | repeat Amount, Size, Roundness, Feather, Exposure, and Highlight | each changed exactly one named AdjustColor scalar; all stored the UI number directly |
 | HSL Red scalar sweep | repeat Red Hue, Saturation, and Luminance from 10 to 20 | changed `Red_hueVal`, `Red_satVal`, and `Red_brightnessVal` independently |
