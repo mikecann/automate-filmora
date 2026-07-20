@@ -360,6 +360,30 @@ API version 8 and immutable plan schema version 8 expose
 stale, missing, and over-duration values. Insertion and removal remain
 unsupported. Schemas 1 through 7 remain unchanged and supported.
 
+## Existing visual clip position acceptance
+
+On a disposable 1280x720 clip, first-use X and Y edits added `Position_x` and
+`Position_y` to `video/effect/transform` while also performing unrelated save
+normalization. Repeating X from 100 to 200 pixels changed only its normalized
+value from `0.578125` to `0.65625`. Repeating Y from 100 to 200 pixels changed
+only its value from `0.3611111044883728` to `0.2222222238779068`, apart from
+known save metadata.
+
+Those pairs confirm `float32(0.5 + x / width)` for X and
+`float32(0.5 - y / height)` for Y. The replacement-only writer applied UI
+coordinates `-150`, `-75` with exactly two semantic diffs. Filmora
+15.6.4.11894 displayed those values, saved the generated copy to a new path,
+fully quit, relaunched, reopened the saved copy, and still displayed them.
+Target discovery read back normalized values `0.3828125` and
+`0.6041666865348816`; every format probe passed.
+
+API version 9 and immutable plan schema version 9 expose
+`replace_clip_position`. Target discovery requires exactly one existing X/Y
+pair. The writer uses the project timeline resolution and rejects stale,
+missing, ambiguous, identical, and non-finite values. Insertion and keyframed
+position remain unsupported. Schemas 1 through 8 remain unchanged and
+supported.
+
 ## Existing linked A/V split acceptance
 
 The initial 2.48-second split was repeated from a new Filmora Save As baseline.

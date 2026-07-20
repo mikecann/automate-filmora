@@ -28,6 +28,7 @@ from .edit_plan import (
     TitleCardTemplateSelector,
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
+    ReplaceClipPositionOperation,
     ReplaceClipVolumeGainOperation,
     ReplaceClipFadeInOperation,
     ReplaceClipFadeOutOperation,
@@ -46,6 +47,12 @@ from .edit_plan import (
 )
 from .evals import evaluate_project
 from .mapping import map_project
+from .position import (
+    audit_clip_position_copy,
+    normalized_position,
+    preflight_clip_position,
+    replace_clip_position,
+)
 from .linked_av import (
     audit_linked_av_end_trim_copy,
     audit_linked_av_move_copy,
@@ -96,6 +103,7 @@ __all__ = [
     "CloneTitleCardsOperation",
     "ReplaceTitleTextOperation",
     "ReplaceClipRotationOperation",
+    "ReplaceClipPositionOperation",
     "ReplaceClipVolumeGainOperation",
     "ReplaceClipFadeInOperation",
     "ReplaceClipFadeOutOperation",
@@ -115,6 +123,7 @@ __all__ = [
     "apply_edit_plan",
     "audit_clip_fade_in_copy",
     "audit_clip_fade_out_copy",
+    "audit_clip_position_copy",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
@@ -149,6 +158,7 @@ __all__ = [
     "preflight_clip_rotation",
     "preflight_clip_fade_in",
     "preflight_clip_fade_out",
+    "preflight_clip_position",
     "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
@@ -156,11 +166,13 @@ __all__ = [
     "replace_clip_rotation",
     "replace_clip_fade_in",
     "replace_clip_fade_out",
+    "replace_clip_position",
     "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
     "survey_projects",
     "validate_project",
+    "normalized_position",
 ]
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"

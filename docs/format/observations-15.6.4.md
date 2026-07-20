@@ -97,6 +97,8 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | track lock | toggle one Lock Track control, save, reopen | control returned to its original state; no persisted track field identified |
 | track mute | toggle one Mute control, save, reopen | control returned to its original state; no persisted track field identified |
 | rotation | change one source clip from 0 to 10 degrees | added `Rotation` with `paramType: 3` and `unValue: 10.0` to its Basic transform |
+| position X repeat | change existing X from 100 px to 200 px at 1280x720 | changed only `Position_x.fxParam.unValue` from `0.578125` to `0.65625` plus save metadata |
+| position Y repeat | change existing Y from 100 px to 200 px at 1280x720 | changed only `Position_y.fxParam.unValue` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |

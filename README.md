@@ -131,10 +131,12 @@ The tools can currently:
 - discover current mutation targets and source fingerprints;
 - explain a strict, versioned edit plan without writing;
 - apply proven title-card cloning, equal-serialization-length title replacement,
-  existing Rotation, audio `VolumeGain`, `FadeInTime`, and `FadeOutTime`
+  existing Rotation, Position X/Y, audio `VolumeGain`, `FadeInTime`, and `FadeOutTime`
   replacement, plus the exact linked transition operations through the
   declarative edit-plan API;
 - replace one already-present video-clip Rotation value with a source-aware audit;
+- replace one already-present video-clip Position X/Y pair using Filmora's
+  visible pixel coordinates and the project timeline resolution;
 - replace one already-present audio-clip `VolumeGain` value with a source-aware
   audit, without synthesizing Filmora's first-use audio effect graph;
 - replace one already-present positive audio-clip fade-in duration with a
@@ -157,8 +159,8 @@ These narrow writers deliberately do not form a generic WFP writer. A generated 
 must still be opened and saved in the exact Filmora build that created its template
 before it should be trusted for production editing.
 
-Published schemas 1 through 7 remain immutable. Schema version 8 adds existing
-audio-clip fade-out replacement without changing the earlier contracts.
+Published schemas 1 through 8 remain immutable. Schema version 9 adds existing
+video-clip position replacement without changing the earlier contracts.
 
 ## Related work
 

@@ -63,6 +63,32 @@ This proves replacement of one existing `Rotation` parameter. It does not yet
 authorize inserting a missing Rotation parameter or changing other transform
 parameters.
 
+### Controlled position change
+
+On a disposable 1280x720 type `1` visual clip, the first non-zero Position X/Y
+edits added `Position_x` and `Position_y` parameters to the existing
+`video/effect/transform` node. Those first saves also normalized unrelated
+metadata, so they do not authorize inserting either parameter.
+
+Repeating X from 100 to 200 pixels isolated `Position_x.fxParam.unValue` from
+`0.578125` to `0.65625`. Repeating Y from 100 to 200 pixels isolated
+`Position_y.fxParam.unValue` from `0.3611111044883728` to
+`0.2222222238779068`. The mapping is:
+
+```text
+Position_x = float32(0.5 + x_pixels / timeline_width)
+Position_y = float32(0.5 - y_pixels / timeline_height)
+```
+
+The float32 conversion explains Filmora's visible decimal noise. A narrow
+writer changed an existing pair to UI X `-150`, Y `-75`, producing normalized
+values `0.3828125` and `0.6041666865348816` with exactly two semantic diffs.
+Filmora 15.6.4.11894 displayed the requested pixel values, Save As retained
+them, and a full quit/relaunch reopened the saved copy with the same values.
+The saved project passed every format probe. This proves replacement of one
+existing pair only. Insertion, keyframed position, and spatial interpretation
+outside the declared timeline resolution remain unsupported.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from
