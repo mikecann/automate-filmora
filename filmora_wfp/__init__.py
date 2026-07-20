@@ -29,6 +29,7 @@ from .edit_plan import (
     ReplaceTitleTextOperation,
     ReplaceClipRotationOperation,
     ReplaceClipPositionOperation,
+    ReplaceClipScaleOperation,
     ReplaceClipVolumeGainOperation,
     ReplaceClipFadeInOperation,
     ReplaceClipFadeOutOperation,
@@ -52,6 +53,11 @@ from .position import (
     normalized_position,
     preflight_clip_position,
     replace_clip_position,
+)
+from .scale import (
+    audit_clip_scale_copy,
+    preflight_clip_scale,
+    replace_clip_scale,
 )
 from .linked_av import (
     audit_linked_av_end_trim_copy,
@@ -104,6 +110,7 @@ __all__ = [
     "ReplaceTitleTextOperation",
     "ReplaceClipRotationOperation",
     "ReplaceClipPositionOperation",
+    "ReplaceClipScaleOperation",
     "ReplaceClipVolumeGainOperation",
     "ReplaceClipFadeInOperation",
     "ReplaceClipFadeOutOperation",
@@ -124,6 +131,7 @@ __all__ = [
     "audit_clip_fade_in_copy",
     "audit_clip_fade_out_copy",
     "audit_clip_position_copy",
+    "audit_clip_scale_copy",
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
@@ -159,6 +167,7 @@ __all__ = [
     "preflight_clip_fade_in",
     "preflight_clip_fade_out",
     "preflight_clip_position",
+    "preflight_clip_scale",
     "preflight_clip_volume_gain",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
@@ -167,6 +176,7 @@ __all__ = [
     "replace_clip_fade_in",
     "replace_clip_fade_out",
     "replace_clip_position",
+    "replace_clip_scale",
     "replace_clip_volume_gain",
     "replace_linked_transition_duration",
     "remove_linked_transition",
@@ -175,4 +185,4 @@ __all__ = [
     "normalized_position",
 ]
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"

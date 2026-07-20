@@ -89,6 +89,20 @@ The saved project passed every format probe. This proves replacement of one
 existing pair only. Insertion, keyframed position, and spatial interpretation
 outside the declared timeline resolution remain unsupported.
 
+### Controlled linked uniform scale change
+
+On the same disposable visual clip, repeating linked Width/Height from 80% to
+60% isolated `Scale_x` and `Scale_y` under `video/effect/transform`. Both
+`fxParam.unValue` fields changed from `80.0` to `60.0`, apart from known Save As
+metadata. The fields store UI percentages directly.
+
+A replacement-only writer changed the existing pair to `70.0` with exactly two
+semantic diffs. Filmora 15.6.4.11894 displayed `70.00%` for Width and Height,
+Save As retained both values, and a full quit/relaunch reopened the saved copy
+with both still visible. Every format probe passed. This proves positive linked
+uniform replacement only. Missing scale parameters, zero or negative scale,
+and unlocked non-uniform Width/Height remain unsupported.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from

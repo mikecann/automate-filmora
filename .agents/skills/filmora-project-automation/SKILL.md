@@ -19,7 +19,8 @@ actual project and Filmora build before asserting field semantics.
 - If the user requests a mutation, create a new output file and make one narrow,
   named change. Current writers cover the observed compound title-card graph,
   same-serialization-length title replacement, and replacement of an existing
-  video Rotation value, an existing video Position X/Y pair, an existing audio `VolumeGain` value, and an existing
+  video Rotation value, an existing video Position X/Y pair, an existing linked
+  uniform video Scale X/Y pair, an existing audio `VolumeGain` value, and an existing
   positive audio `FadeInTime` or `FadeOutTime` value, plus duration
   replacement or removal of the exact
   observed linked Dissolve/audio-fade pair, and a transition-free linked A/V
@@ -142,7 +143,9 @@ the verified link-identifier shape. Schema version 6 exposes
 existing parameters returned in `fade_in_targets`. Schema version 8 exposes
 `replace_clip_fade_out` only for existing parameters returned in
 `fade_out_targets`. Schema version 9 exposes `replace_clip_position` only for
-existing pairs returned in `position_targets`. Schemas 1 through 8 remain
+existing pairs returned in `position_targets`. Schema version 10 exposes
+`replace_clip_scale` only for linked uniform pairs returned in `scale_targets`.
+Schemas 1 through 9 remain
 immutable and supported.
 
 1. Add a targeted command that refuses identical input/output paths.

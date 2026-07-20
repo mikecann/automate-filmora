@@ -384,6 +384,23 @@ missing, ambiguous, identical, and non-finite values. Insertion and keyframed
 position remain unsupported. Schemas 1 through 8 remain unchanged and
 supported.
 
+## Existing linked uniform clip scale acceptance
+
+On the disposable 1280x720 clip, a repeat edit from linked Width/Height 80% to
+60% changed only `Scale_x.fxParam.unValue` and `Scale_y.fxParam.unValue`, both
+from `80.0` to `60.0`, apart from known Save As metadata. The fields store UI
+percentages directly.
+
+The narrow writer changed the existing pair to `70.0` with exactly two semantic
+diffs. Filmora 15.6.4.11894 displayed `70.00%` for both dimensions, saved the
+generated copy, fully quit, relaunched, reopened the saved copy, and still
+displayed both values. Format evaluation passed.
+
+API version 10 and immutable plan schema version 10 expose
+`replace_clip_scale`. Discovery includes only exactly-one, equal, positive X/Y
+pairs. The writer rejects missing, stale, non-uniform, zero, and negative
+values. Schemas 1 through 9 remain unchanged and supported.
+
 ## Existing linked A/V split acceptance
 
 The initial 2.48-second split was repeated from a new Filmora Save As baseline.

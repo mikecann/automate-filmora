@@ -20,6 +20,7 @@ from filmora_wfp import (
     audit_clip_fade_in_copy,
     audit_clip_fade_out_copy,
     audit_clip_position_copy,
+    audit_clip_scale_copy,
     audit_linked_av_split_copy,
     audit_clip_volume_gain_copy,
     audit_title_text_copy,
@@ -43,12 +44,14 @@ from filmora_wfp import (
     preflight_clip_fade_in,
     preflight_clip_fade_out,
     preflight_clip_position,
+    preflight_clip_scale,
     preflight_clip_volume_gain,
     project_sha256,
     replace_clip_rotation,
     replace_clip_fade_in,
     replace_clip_fade_out,
     replace_clip_position,
+    replace_clip_scale,
     replace_clip_volume_gain,
     replace_linked_transition_duration,
     replace_title_text,
@@ -185,7 +188,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = _rewrite_main_timeline(base, root / "source.wfp", add_targets)
             digest = project_sha256(source)
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 9)
+            self.assertEqual(targets["api_version"], 10)
             self.assertEqual(
                 targets["rotation_targets"][0]["selector"],
                 {"clip_uid": "video-source-clip", "rotation": "10.0"},
@@ -727,7 +730,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 "end_ticks": 60_000_000,
             }
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 9)
+            self.assertEqual(targets["api_version"], 10)
             self.assertEqual(len(targets["linked_av_targets"]), 1)
             self.assertEqual(targets["linked_av_targets"][0]["selector"], selector)
             self.assertEqual(
@@ -889,7 +892,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 ],
             }
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 9)
+            self.assertEqual(explanation["api_version"], 10)
             self.assertFalse(explanation["writes_performed"])
             self.assertEqual(explanation["operations"][0]["op"], "split_linked_av_pair")
             self.assertEqual(explanation["operations"][0]["split_ticks"], 50_000_000)
@@ -1203,6 +1206,79 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             v8_plan["schema_version"] = 8
             with self.assertRaisesRegex(WfpError, "Unsupported edit operation"):
                 load_edit_plan(v8_plan)
+
+    def test_replace_existing_uniform_scale_explains_and_applies(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_scale(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append(
+                    {
+                        "type": 1,
+                        "thisUId": "scaled-video",
+                        "tlBegin": 40_000_000,
+                        "tlEnd": 60_000_000,
+                        "effectChainList": [{"effectList": [{
+                            "id": "video/effect/transform",
+                            "paramList": [
+                                {"name": "Scale_x", "fxParam": {"paramType": 3, "unValue": 60.0}},
+                                {"name": "Scale_y", "fxParam": {"paramType": 3, "unValue": 60.0}},
+                            ],
+                        }]}],
+                    }
+                )
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_scale)
+            selector = list_edit_targets(source)["scale_targets"][0]["selector"]
+            self.assertEqual(selector, {"clip_uid": "scaled-video", "scale_x": "60.0", "scale_y": "60.0"})
+            plan = {
+                "schema_version": 10,
+                "source": {"sha256": project_sha256(source)},
+                "operations": [{
+                    "op": "replace_clip_scale",
+                    "target": selector,
+                    "new_scale": "70",
+                }],
+            }
+            explanation = explain_edit_plan(source, plan)
+            self.assertFalse(explanation["writes_performed"])
+            output = root / "output.wfp"
+            result = apply_edit_plan(source, output, plan)
+            self.assertTrue(result["verification"]["source_aware_audit_valid"])
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 2)
+            self.assertTrue(
+                audit_clip_scale_copy(
+                    source,
+                    output,
+                    clip_uid="scaled-video",
+                    old_scale_x="60.0",
+                    old_scale_y="60.0",
+                    new_scale_x="70.0",
+                    new_scale_y="70.0",
+                )["valid"]
+            )
+            self.assertEqual(
+                preflight_clip_scale(
+                    source,
+                    clip_uid="scaled-video",
+                    old_scale_x="60.0",
+                    old_scale_y="60.0",
+                    new_scale_x="70",
+                    new_scale_y="70",
+                )["new_scale_x"],
+                "70.0",
+            )
+            with self.assertRaisesRegex(WfpError, "linked uniform"):
+                replace_clip_scale(
+                    source,
+                    root / "nonuniform.wfp",
+                    clip_uid="scaled-video",
+                    old_scale_x="60",
+                    old_scale_y="60",
+                    new_scale_x="70",
+                    new_scale_y="80",
+                )
 
     def test_replace_existing_clip_position_rejects_missing_stale_and_failed_audit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1878,7 +1954,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             source = write_cloneable_title_project(root / "source.wfp")
 
             targets = list_edit_targets(source)
-            self.assertEqual(targets["api_version"], 9)
+            self.assertEqual(targets["api_version"], 10)
             self.assertEqual(targets["source"]["sha256"], project_sha256(source))
             self.assertEqual(
                 targets["title_card_templates"],
@@ -1977,11 +2053,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 schema_v8["$defs"]["replaceClipFadeOutOperation"]["properties"]["op"]["const"],
                 "replace_clip_fade_out",
             )
-            schema_v9 = edit_plan_schema()
+            schema_v9 = edit_plan_schema(9)
             self.assertEqual(schema_v9["properties"]["schema_version"]["const"], 9)
             self.assertEqual(
                 schema_v9["$defs"]["replaceClipPositionOperation"]["properties"]["op"]["const"],
                 "replace_clip_position",
+            )
+            schema_v10 = edit_plan_schema()
+            self.assertEqual(schema_v10["properties"]["schema_version"]["const"], 10)
+            self.assertEqual(
+                schema_v10["$defs"]["replaceClipScaleOperation"]["properties"]["op"]["const"],
+                "replace_clip_scale",
             )
 
     def test_v2_replace_title_text_plan_explains_and_applies_audited_writer(self) -> None:
@@ -1993,7 +2075,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             plan = _replace_text_plan(source)
 
             explanation = explain_edit_plan(source, plan)
-            self.assertEqual(explanation["api_version"], 9)
+            self.assertEqual(explanation["api_version"], 10)
             self.assertEqual(explanation["plan_schema_version"], 2)
             self.assertFalse(explanation["writes_performed"])
             operation = explanation["operations"][0]
@@ -2132,7 +2214,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 )
             self.assertEqual(exit_code, 2)
             error = json.loads(stderr.getvalue())
-            self.assertEqual(error["api_version"], 9)
+            self.assertEqual(error["api_version"], 10)
             self.assertEqual(error["error"]["code"], "wfp_error")
             self.assertIn("Source fingerprint changed", error["error"]["message"])
 
