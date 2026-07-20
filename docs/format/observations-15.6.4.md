@@ -107,6 +107,12 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | anchor Y repeat | change existing Anchor Point Y from 100 px to 200 px at 1280x720 | changed only `_Anchor_y` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
 | linked uniform speed repeat | change linked A/V from 1.25x to 1.50x with ripple edit | updated both clip ends, both serialized speed payloads, media duration, and project duration; speed-payload `MD5` generation remains opaque |
 | Basic Color temperature repeat | change existing Temperature from 10 to 20 | changed only AdjustColor `u_temperature` from `10.0` to `20.0` plus save metadata |
+| Basic Color scalar sweep | repeat Tint, Vibrance, Saturation, Exposure, Brightness, Contrast, Highlight, Shadow, White, and Black | each changed exactly one named AdjustColor scalar from `10.0` to `20.0` |
+| Basic Sharpen repeat | change Sharpen from 10 to 20 | changed only separate Sharpen effect parameter `amount` from `10.0` to `20.0` |
+| Basic Vignette scalar sweep | repeat Amount, Size, Roundness, Feather, Exposure, and Highlight | each changed exactly one named AdjustColor scalar; all stored the UI number directly |
+| HSL Red scalar sweep | repeat Red Hue, Saturation, and Luminance from 10 to 20 | changed `Red_hueVal`, `Red_satVal`, and `Red_brightnessVal` independently |
+| HSL channel sweep | repeat Hue for Orange, Yellow, Green, Cyan, Blue, Purple, and Magenta | confirmed all serialized prefixes; cyan is stored as `Aqua_hueVal` |
+| luma Curves repeat | move one midpoint upward | changed `yKnots` plus both derived Bezier-control arrays under the `rgbcurve` effect |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |
 | transition undo | undo the insertion | removed both transition objects and restored the prior instance-ID count |

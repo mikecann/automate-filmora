@@ -186,6 +186,76 @@ effect also exposed enable flags for Color, white balance, Light, LUT, HSL,
 Vignette, and Auto Color, but their enum semantics are not inferred from this
 temperature experiment. First-use insertion and keyframed color remain open.
 
+The rest of the visible Basic Color surface was then repeated on the same
+normalized node. Every control changed exactly one `paramType: 3` scalar and
+stored the UI number directly:
+
+| Filmora control | Parameter |
+| --- | --- |
+| Tint | `u_tint` |
+| Vibrance | `u_vibrance` |
+| Saturation | `u_saturation` |
+| Exposure | `u_exposure` |
+| Brightness | `u_brightness` |
+| Contrast | `u_contrast` |
+| Highlight | `u_highLight` |
+| Shadow | `u_shadow` |
+| White | `u_whiteLevel` |
+| Black | `u_blackLevel` |
+| Vignette Amount | `amount` |
+| Vignette Size | `size` |
+| Vignette Roundness | `roundness` |
+| Vignette Feather | `feather` |
+| Vignette Exposure | `exposure` |
+| Vignette Highlight | `highlights` |
+
+Sharpen is the exception to the shared AdjustColor node. It lives in a separate
+effect with ID `616D7BAC-39DB-415A-9EEA-798678A43617`, display `Sharpen`, and
+parameter `amount`. Its 10-to-20 repeat was otherwise the same direct scalar
+change. All 17 repeat pairs, including Temperature, passed the format eval.
+
+These observations prove existing-parameter replacement, not the valid range
+of every control, section enable/disable semantics, presets, auto white
+balance, LUT selection, HSL, Curves, or first-use effect insertion.
+
+### Controlled HSL channel changes
+
+The HSL panel exposes eight color chips. Red Hue, Saturation, and Luminance each
+repeated from 10 to 20 as one direct AdjustColor scalar:
+
+```text
+Red_hueVal
+Red_satVal
+Red_brightnessVal
+```
+
+Hue repeats across the other seven chips confirmed the remaining serialized
+prefixes: `Orange`, `Yellow`, `Green`, `Aqua`, `Blue`, `Purple`, and `Magenta`.
+In particular, Filmora's cyan-colored chip uses `Aqua_hueVal`, not `Cyan`.
+All values used `paramType: 3` and stored the UI number directly. The observed
+suffix pattern strongly suggests matching `_satVal` and `_brightnessVal`
+parameters for every prefix, but only the complete Red trio and every channel's
+Hue were changed in this batch.
+
+### Controlled RGB Curves change
+
+The Curves effect has ID `0FDB786D-A9A9-4ED7-9964-AC6954FB441A` and display
+`rgbcurve`. Adding a midpoint to the white/luma curve and moving it upward on a
+repeat save changed three `paramType: 6` JSON-string parameters:
+
+```text
+yKnots
+yKnot_First_Controls
+yKnot_Second_Controls
+```
+
+`yKnots` held the endpoints plus the edited midpoint. The two control arrays
+held derived Bezier handles, and both changed when the one visible point moved.
+The untouched red, green, and blue channels use the same triplet with `r`, `g`,
+and `b` prefixes. This means curve automation must reproduce Filmora's handle
+derivation rather than changing only the visible knot. No curve writer is
+authorized yet.
+
 ### Controlled audio volume-gain change
 
 On a disposable type `2` audio clip, the first Basic Audio volume change from

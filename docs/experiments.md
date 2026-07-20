@@ -64,8 +64,15 @@ repeat mapped the paired clip bounds and embedded speed payload, but its opaque
 `MD5` generation still blocks a writer.
 An existing vertical-flip node then produced the same clean two-part toggle as
 horizontal flip. Basic Color Temperature produced a clean 10-to-20 repeat at
-AdjustColor `u_temperature`; the rest of the color panel still needs isolated
-experiments.
+AdjustColor `u_temperature`. The subsequent sweep completed all visible Basic
+Color, Light, Sharpen, and Vignette scalar controls. Each was a one-parameter
+repeat; Sharpen was the only separate effect node. Presets, toggles, Auto White
+Balance, LUT, HSL, and Curves remain open.
+The next batch mapped the full HSL channel prefix set, all three Red HSL
+scalars, and one repeated luma Curves midpoint. Curves serialize the visible
+knot plus two derived Bezier-control arrays, so they remain read-only until the
+handle derivation is proven. HSL section toggles and non-Red saturation and
+luminance remain open.
 
 Still open:
 
