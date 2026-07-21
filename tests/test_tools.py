@@ -2974,7 +2974,17 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                                         "fxParam": {"paramType": 3, "unValue": 1.3743289709091187},
                                     },
                                 ],
-                            }
+                            },
+                            {
+                                "id": "audio/effect/audio_forest",
+                                "display": "audio_forest",
+                                "paramList": [
+                                    {
+                                        "name": "effect_type",
+                                        "fxParam": {"paramType": 5, "unValue": 2},
+                                    }
+                                ],
+                            },
                         ],
                     }
                 ]
@@ -2993,6 +3003,15 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             )
             parameter_names = {item["name"] for item in volume["parameters"]}
             self.assertEqual(parameter_names, {"LoudnessGain", "LoudnessGainEnable"})
+            voice_filter = next(
+                effect
+                for effect in result["effects"]
+                if effect["id"] == "audio/effect/audio_forest"
+            )
+            voice_values = {
+                item["value_path"]: item["examples"] for item in voice_filter["parameters"]
+            }
+            self.assertEqual(voice_values["fxParam.unValue"], [2])
 
     def test_map_profiles_embedded_json_and_xml_without_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

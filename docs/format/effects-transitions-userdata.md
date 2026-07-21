@@ -76,6 +76,19 @@ metadata. The preset values are therefore mapped for inspection, but the
 first-use userData rewrite and the `Custom` mode are not stable enough for a
 generic writer.
 
+### Controlled voice-filter presets
+
+Audio > Voice Filters applies a separate effect-chain node. The observed
+`Roadside` preset serialized as `display: "audio_roadside"`,
+`id: "audio/effect/audio_roadside"`, and one `effect_type` parameter with
+`unValue: 5`. Repeating the same normalized clip with `Forest` changed the
+effect display/id and parameter value to `audio_forest` and `2`.
+
+Both presets also rewrite clip and effect `userData`, including an opaque
+resource JSON blob and fresh instance IDs. The preset enum and node shape are
+mapped for inspection, but insertion/removal and a generic preset writer remain
+unsupported until more presets establish a stable resource contract.
+
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 

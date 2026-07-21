@@ -479,6 +479,12 @@ Selecting `-23 LUFS` stored `0.6138902306556702`; repeating it at `-16 LUFS`
 stored `1.3743289709091187` in isolation. The preset mapping is read-safe, but
 the first-use userData rewrite and Custom mode remain writer gaps.
 
+Voice Filters then added a separate effect node. `Roadside` serialized as
+`audio/effect/audio_roadside` with `effect_type: 5`; repeating it with
+`Forest` changed that node to `audio/effect/audio_forest` and `effect_type: 2`.
+The node shape is clear, but its resource `userData` is regenerated on every
+preset change, so this remains read-only mapping rather than a writer contract.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute
