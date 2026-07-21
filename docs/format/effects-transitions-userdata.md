@@ -359,6 +359,16 @@ with strength in the observed 0–100 range. It never inserts the effect or
 rewrites `lut3dPath`; LUT file selection and first-use insertion remain outside
 the writer contract.
 
+### Controlled Auto White Balance insertion
+
+With an existing `AdjustColor` node selected, clicking Color > Basic > Color >
+Auto White Balance inserted two direct `paramType: 3` scalars. On the disposable
+test-card source the first click produced `u_temperature: 100.0` and
+`u_tint: -100.0`; a second click on the already-applied control produced no
+semantic change. The values are derived from the image, so this maps the
+serialization shape but does not justify a value-generating writer. The picker
+and the separate Auto Color control remain unverified.
+
 ### Controlled Basic Color first-use insertion
 
 Applying Color > Basic > Light > Exposure to a clip with no prior color effect

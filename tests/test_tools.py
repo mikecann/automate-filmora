@@ -184,6 +184,12 @@ class FilmoraProjectToolsTest(unittest.TestCase):
         )
         self.assertEqual(lut_row["status"], "partial")
         self.assertIn("alpha", lut_row["evidence"])
+        wb_row = next(
+            item for item in features
+            if item["area"] == "color" and item["feature"] == "Auto Color and white balance picker"
+        )
+        self.assertEqual(wb_row["status"], "partial")
+        self.assertIn("Auto White Balance", wb_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()

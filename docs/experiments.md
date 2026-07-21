@@ -25,6 +25,19 @@
   path portability, first-use insertion, and default-100 omission remain
   read-only.
 
+### 2026-07-21: Auto White Balance
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: opened Color > Basic > Color and clicked Auto White Balance once,
+  then clicked it again on the normalized result.
+- Before/after: `296-auto-wb-baseline.wfp` → `297-auto-wb-applied.wfp` →
+  `298-auto-wb-repeat.wfp`
+- Evidence: the first click inserted `u_temperature: 100.0` and `u_tint:
+  -100.0` as direct `paramType: 3` values. The repeat changed only ordinary
+  Save As UUID/metadata noise. All copies passed format evaluation.
+- Boundary: this is mapped read-only structure. The values are image-derived,
+  and the Auto Color and white-balance picker controls remain unverified.
+
 ### 2026-07-21: Upper-track overlay opacity
 
 - Filmora: 15.6.4.11894 on macOS
