@@ -485,6 +485,17 @@ Voice Filters then added a separate effect node. `Roadside` serialized as
 The node shape is clear, but its resource `userData` is regenerated on every
 preset change, so this remains read-only mapping rather than a writer contract.
 
+## Stabilization acceptance
+
+On `274-path-curve-followup.wfp`, enabling Video > Basic > Stabilization changed
+only `stabilization.status` from `0` to `1`. Repeating Smoothness from `5.0` to
+`9.0` changed only `stabilization.smooth`. The generated
+`277-stabilization-generated-9.wfp` passed format evaluation, opened in Filmora,
+and its Save As copy `278-stabilization-generated-roundtrip.wfp` retained the
+same `smooth: 9.0` state. `replace_clip_stabilization` therefore supports only
+replacement inside this exact existing enabled shape; insertion, analysis data,
+and disabling remain unsupported.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute

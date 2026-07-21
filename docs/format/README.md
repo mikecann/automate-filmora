@@ -85,6 +85,7 @@ document independently inflates clips, effects, and titles.
 See [project-info.md](project-info.md), [timeline.md](timeline.md),
 [media-library.md](media-library.md), [titles.md](titles.md),
 [effects-transitions-userdata.md](effects-transitions-userdata.md),
+[video-analysis.md](video-analysis.md),
 [serialized-payloads.md](serialized-payloads.md),
 [observations-15.6.4.md](observations-15.6.4.md), and
 [compound-title-cards.md](compound-title-cards.md) for current field maps.

@@ -56,6 +56,7 @@ from filmora_wfp import (
     preflight_clip_blend_mode,
     preflight_clip_hsl,
     preflight_clip_equalizer,
+    preflight_clip_stabilization,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -73,6 +74,7 @@ from filmora_wfp import (
     replace_clip_volume_gain,
     replace_clip_hsl,
     replace_clip_equalizer,
+    replace_clip_stabilization,
     replace_clip_blend_mode,
     replace_linked_transition_duration,
     replace_title_text,
@@ -1666,6 +1668,71 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     clip_uid="equalizer-audio",
                     old_preset="Rock",
                     new_preset="Pop",
+                )
+
+    def test_existing_stabilization_smooth_replacement_is_guarded_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_stabilization(timeline):
+                video = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                video["type"] = 1
+                video["thisUId"] = "stabilization-video"
+                video["stabilization"] = {
+                    "cache_mode": 0,
+                    "smooth": 5.0,
+                    "status": 1,
+                    "version": 1.0,
+                }
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_stabilization)
+            output = root / "output.wfp"
+            self.assertEqual(
+                preflight_clip_stabilization(
+                    source,
+                    clip_uid="stabilization-video",
+                    old_smooth=5.0,
+                    new_smooth=9.0,
+                )["matching_archive_occurrences"],
+                1,
+            )
+            result = replace_clip_stabilization(
+                source,
+                output,
+                clip_uid="stabilization-video",
+                old_smooth=5.0,
+                new_smooth=9.0,
+            )
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertTrue(evaluate_project(output)["valid"])
+            diff = diff_projects(source, output)
+            self.assertEqual(
+                [change["path"] for change in diff["json_changes"]],
+                ["$.timelineInfos[0].trackInfos[1].clipList[0].stabilization.smooth"],
+            )
+
+            def disable_stabilization(timeline):
+                video = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip.get("thisUId") == "stabilization-video"
+                )
+                video["stabilization"]["status"] = 0
+
+            disabled = _rewrite_main_timeline(source, root / "disabled.wfp", disable_stabilization)
+            with self.assertRaisesRegex(WfpError, "enabled normalized state"):
+                preflight_clip_stabilization(
+                    disabled,
+                    clip_uid="stabilization-video",
+                    old_smooth=5.0,
+                    new_smooth=9.0,
                 )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:

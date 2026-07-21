@@ -69,7 +69,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("audio", "equalizer", "writable", "guarded existing Rock and Pop preset replacement; real-project round trip"),
     ("audio", "denoise ducking normalization voice effects", "partial", "Normal Denoise enable and strength repeated; other audio AI controls open"),
     ("video.analysis", "Motion Blur", "external_dependency", "toggle starts model update and processing"),
-    ("video.analysis", "Stabilization", "open", "controlled save pending"),
+    ("video.analysis", "Stabilization", "writable", "existing enabled smooth replacement; generated copy survived Filmora Save As"),
     ("video.analysis", "Video Denoise and Lens Correction", "open", "UI inventoried only"),
     ("video.ai", "AI Video Enhancer modes", "external_dependency", "credit and model UI only"),
     ("video.ai", "AI Object Remover", "external_dependency", "UI inventoried only"),
