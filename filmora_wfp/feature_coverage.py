@@ -37,7 +37,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.effects", "Allpurpose Position effect", "partial", "exact-build backup corpus; keyframe payload opaque"),
     ("text.effects", "Text Dropout speed and scale", "partial", "exact-build backup corpus; UI repeat pending"),
     ("video.compositing", "static opacity", "writable", "guarded existing-overlay pipBuf replacement; repeated UI diff"),
-    ("video.compositing", "blend mode", "open", "overlay required"),
+    ("video.compositing", "blend mode", "writable", "guarded existing pipBuf modes: Normal, Multiply, Screen"),
     ("video.background", "blur enable and strength preset", "writable", "guarded existing-field writer; Filmora sample round trip"),
     ("video.background", "other fill types and styles", "partial", "Color enum 2 observed; payload and other types open"),
     ("video.animation", "Fade In and Fade Out presets", "mapped", "apply undo redo"),

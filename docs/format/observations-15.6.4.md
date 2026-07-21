@@ -131,6 +131,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | upper-track overlay opacity | set Compositing Opacity 100 to 50, then 50 to 25 | each repeat changed only embedded `pipBuf.Opacity`; the guarded static-opacity writer passed eval on an existing overlay |
 | Background blur enable and preset | enable default Blur, select 40%, disable | enable adds/removes `backgroundFillEnable: true`; preset changes retained `backgroundFillBluredness` from `20` to `40` |
 | Background type first-use | change normalized Blur type to Color | added only `backgroundFillType: 2` plus opaque timeline user data; Color payload remains untested |
+| Blend Mode repeat | change overlay Multiply to Screen | changed only embedded `pipBuf.BlendMode` and size; generated copy displayed Screen and Filmora Save As retained it |
 | Motion Blur dependency probe | toggle Motion Blur on, cancel processing, toggle off, Save As | triggered an AI-model update and clip-processing pass; the final off save added no semantic project field, so mapping requires an explicitly accepted completed model run |
 | transition add | apply Dissolve to one selected linked clip | added linked visual Dissolve and audio fade `postTransition` objects |
 | transition duration | change two seconds to one second | moved both transition starts by 10,000,000 ticks; ends stayed fixed |

@@ -15,12 +15,14 @@
 - UI change: created a disposable upper-track overlay fixture, selected the clip, and set Video > Compositing > Opacity from 100 to 50, then repeated from 50 to 25.
 - Before/after: `208-overlay-fixture.wfp` → `209-overlay-opacity-50.wfp` → `210-overlay-opacity-25.wfp`
 - Evidence: both UI diffs changed only the embedded `pipBuf.Opacity` semantic field, with `pipBufSize` changing when the serialized byte length changed. The copy-only `replace_clip_opacity` writer generated `211-overlay-opacity-generated-25.wfp`, changed only the existing scalar, and passed `eval-format` plus its semantic audit.
-- Boundary: static opacity on an existing type-1 overlay is writable. Keyframed opacity, first-use insertion, and Blend Mode remain open.
+- Boundary: static opacity on an existing type-1 overlay is writable. Keyframed opacity and first-use insertion remain open.
 
-The adjacent Blend Mode control also produced one useful negative result: a
-save with the visible mode still Normal normalized `pipBuf.BlendMode` from
-integer `0` to string `"Normal"`. Since no non-Normal option was selected, this
-does not authorize a Blend Mode writer.
+The adjacent Blend Mode control first normalized numeric `0` to string
+`"Normal"`. A separate overlay baseline then changed `Multiply` to `Screen`;
+the repeat changed only the embedded string and `pipBufSize`, and Filmora
+retained `Screen` after Save As. `replace_clip_blend_mode` now supports those
+observed static string modes, while numeric Normal normalization and unknown
+mode names remain outside the contract.
 
 ### 2026-07-21: Track visibility toggle
 

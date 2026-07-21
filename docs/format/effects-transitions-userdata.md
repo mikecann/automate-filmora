@@ -475,8 +475,12 @@ pair.
 
 Focusing and saving the same overlay's Blend Mode with the visible value still
 set to Normal normalized the embedded `pipBuf.BlendMode` from numeric `0` to
-the string `"Normal"`. This is a serialization-normalization observation, not
-a controlled non-Normal mode change, so Blend Mode remains open.
+the string `"Normal"`. A controlled repeat from `Multiply` to `Screen` then
+changed only the embedded string and `pipBufSize`; Filmora opened the generated
+copy, displayed `Screen`, and retained it after Save As. The guarded
+`replace_clip_blend_mode` writer supports the observed static string modes
+`Normal`, `Multiply`, and `Screen`; keyframes, numeric Normal normalization,
+and unobserved mode names remain unsupported.
 
 ### Controlled Background blur
 

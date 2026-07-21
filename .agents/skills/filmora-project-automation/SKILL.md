@@ -160,6 +160,9 @@ The audio balance writer is likewise limited to one existing `Balance`
 parameter under `audio/effect/volume` and uses only the verified UI conversion.
 The HSL writer is limited to one existing static `AdjustColor` scalar with a
 known channel/suffix name; it does not insert HSL parameters or edit keyframes.
+The Blend Mode writer is limited to an existing overlay `pipBuf` string mode
+among the observed `Normal`, `Multiply`, and `Screen` values; it does not
+normalize numeric `Normal` or synthesize overlays.
 Schemas 1 through 9 remain
 immutable and supported.
 

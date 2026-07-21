@@ -95,6 +95,10 @@ the verified Filmora conversion between the -100..100 UI range and its stored
 `Orange_satVal` or `Red_hueVal`. It refuses first-use insertion, keyframed
 parameters, missing fields, and stale values.
 
+`replace_clip_blend_mode` edits an existing overlay `pipBuf` string mode for
+the observed `Normal`, `Multiply`, and `Screen` values. It does not normalize
+numeric `Normal`, synthesize overlays, or edit keyframes.
+
 Repeat the same audit explicitly with:
 
 ```bash

@@ -53,6 +53,7 @@ from filmora_wfp import (
     preflight_clip_position,
     preflight_clip_opacity,
     preflight_clip_audio_balance,
+    preflight_clip_blend_mode,
     preflight_clip_hsl,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
@@ -70,6 +71,7 @@ from filmora_wfp import (
     replace_clip_vertical_flip,
     replace_clip_volume_gain,
     replace_clip_hsl,
+    replace_clip_blend_mode,
     replace_linked_transition_duration,
     replace_title_text,
     remove_linked_transition,
@@ -1570,6 +1572,42 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     old_value=15,
                     new_value=30,
                 )
+
+    def test_existing_blend_mode_is_copy_only_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_overlay(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append({
+                    "type": 1,
+                    "thisUId": "blend-video",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "pipBuf": '{"Algorithm":"Bilinear","BlendMode":"Multiply","Enable":true}',
+                    "pipBufSize": 76,
+                })
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_overlay)
+            output = root / "output.wfp"
+            preflight = preflight_clip_blend_mode(
+                source, clip_uid="blend-video", old_mode="Multiply", new_mode="Screen"
+            )
+            self.assertEqual(preflight["matching_archive_occurrences"], 1)
+            result = replace_clip_blend_mode(
+                source,
+                output,
+                clip_uid="blend-video",
+                old_mode="Multiply",
+                new_mode="Screen",
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            self.assertEqual(
+                [c["path"] for c in diff_projects(source, output)["json_changes"]
+                 if "BlendMode" in c["path"]],
+                ["$.timelineInfos[0].trackInfos[1].clipList[1].pipBuf.$embedded_json.BlendMode"],
+            )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
