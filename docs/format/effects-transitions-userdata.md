@@ -380,6 +380,13 @@ of the visible red value). Both the baseline and after copy passed
 `eval-format`; this strengthens the positive-red conversion evidence without
 closing the remaining channel and direction cases.
 
+A controlled Green first-use edit inserted `gamma_green` and derived hue,
+saturation, and lightness fields. From that normalized save, Green `0.50 → 0.25`
+changed `gamma_green` directly but also changed `gamma_hue` `40.00008 → 20.00004`,
+`gamma_saturation` `0.9790566 → 0.7981336`, and
+`gamma_lightness` `0.4166667 → 0.3333333`. The nonlinear derived values make
+formula invention unsafe; no Color Wheels writer is authorized.
+
 ### Controlled Animation keyframe presets
 
 Animation > Keyframe Presets > Fade In requires a double-click; a single click

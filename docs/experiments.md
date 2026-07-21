@@ -124,7 +124,10 @@ for Shadows, Midtones, and Highlights. A red-component edit changed red,
 saturation, and derived lightness together. A second Midtones repeat from
 `0.75` to `0.50` confirmed the positive-red path and approximately one-third
 lightness conversion, so wheel values remain read-only until the other channels,
-directions, and bounds are independently proven.
+directions, and bounds are independently proven. A Green repeat then changed
+its direct value plus nonlinear hue, saturation, and lightness derivatives,
+confirming that a generic writer needs a proven color-space conversion rather
+than field substitution.
 The Animation Keyframe Presets Fade In card was then applied with its actual
 double-click gesture and isolated through Undo/Redo. It stores a one-second
 0-to-100 opacity ramp inside `pipBuf.OpacityKeyFrame`; its opaque MD5 still
