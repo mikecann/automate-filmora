@@ -120,8 +120,10 @@ array declares all six Hue/Saturation curve modes; only the selected mode's
 JSON string changed. Other mode-specific point/control derivations remain open.
 Color Wheels then confirmed the `lift`, `gamma`, and `gain` parameter families
 for Shadows, Midtones, and Highlights. A red-component edit changed red,
-saturation, and derived lightness together, so wheel values remain read-only
-until the conversion model is complete.
+saturation, and derived lightness together. A second Midtones repeat from
+`0.75` to `0.50` confirmed the positive-red path and approximately one-third
+lightness conversion, so wheel values remain read-only until the other channels,
+directions, and bounds are independently proven.
 The Animation Keyframe Presets Fade In card was then applied with its actual
 double-click gesture and isolated through Undo/Redo. It stores a one-second
 0-to-100 opacity ramp inside `pipBuf.OpacityKeyFrame`; its opaque MD5 still

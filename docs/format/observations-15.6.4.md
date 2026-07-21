@@ -121,6 +121,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | luma Curves repeat | move one midpoint upward | changed `yKnots` plus both derived Bezier-control arrays under the `rgbcurve` effect |
 | Hue-vs-Sat Curves repeat | move one midpoint upward | changed only the `ICurveColor::Hue2Sat` JSON payload under `video/effect/curvecolor`; all six curve-mode payloads were identified |
 | Color Wheels red-component sweep | repeat Shadows, Midtones, and Highlights red from 0.25 to 0.50 | confirmed `lift`, `gamma`, and `gain` families; each visible red edit also changed derived saturation and lightness |
+| Color Wheels Midtones repeat | repeat Midtones red from 0.75 to 0.50 | `gamma_red` and `gamma_saturation` follow the visible value; `gamma_lightness` follows approximately one-third |
 | Fade In keyframe preset | double-click preset, Undo, Redo | populated `pipBuf.OpacityKeyFrame` with a one-second 0-to-100 ramp; Undo restored an empty string; payload MD5 remains opaque |
 | remaining keyframe presets | apply each card independently from the same no-preset baseline | mapped Fade Out, Pause, four slide directions, Vortex In/Out, and Zoom In/Out across `pipBuf.OpacityKeyFrame` and transform `paramMapList`; sequential application can retain stale keys |
 | base-track compositing negative control | try Opacity 100 to 50 with text entry and slider drag | no persisted semantic change; a true upper-track overlay is required before mapping static opacity or blend modes |

@@ -372,6 +372,13 @@ parameters from one visible component; they are not independent RGB scalars.
 Green, blue, the outer luminance controls, negative values, and the full
 conversion model remain open. No writer is authorized.
 
+A second controlled Midtones repeat from visible red `0.75` to `0.50` changed
+only `gamma_red` and `gamma_saturation` from `0.75` to `0.50`, plus
+`gamma_lightness` from `0.25` to `0.1666666716337204` (approximately one-third
+of the visible red value). Both the baseline and after copy passed
+`eval-format`; this strengthens the positive-red conversion evidence without
+closing the remaining channel and direction cases.
+
 ### Controlled Animation keyframe presets
 
 Animation > Keyframe Presets > Fade In requires a double-click; a single click
