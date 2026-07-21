@@ -27,6 +27,7 @@ from filmora_wfp import (
     audit_clip_vertical_flip_copy,
     audit_linked_av_split_copy,
     audit_clip_volume_gain_copy,
+    audit_clip_lut_copy,
     audit_title_text_copy,
     audit_title_card_copy,
     clone_title_cards,
@@ -58,6 +59,7 @@ from filmora_wfp import (
     preflight_clip_equalizer,
     preflight_clip_stabilization,
     preflight_clip_video_denoise,
+    preflight_clip_lut,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -77,6 +79,7 @@ from filmora_wfp import (
     replace_clip_equalizer,
     replace_clip_stabilization,
     replace_clip_video_denoise,
+    replace_clip_lut,
     replace_clip_blend_mode,
     replace_linked_transition_duration,
     replace_title_text,
@@ -175,6 +178,12 @@ class FilmoraProjectToolsTest(unittest.TestCase):
         )
         self.assertEqual(track_row["status"], "partial")
         self.assertIn("Track Manager insertion", track_row["evidence"])
+        lut_row = next(
+            item for item in features
+            if item["area"] == "color" and item["feature"] == "LUT selection and intensity"
+        )
+        self.assertEqual(lut_row["status"], "partial")
+        self.assertIn("alpha", lut_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()
@@ -1789,6 +1798,65 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 [change["path"] for change in diff["json_changes"]],
                 ["$.timelineInfos[0].trackInfos[1].clipList[0].image_denoise.sigma"],
             )
+
+    def test_existing_lut_strength_replacement_is_guarded_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_lut(timeline):
+                video = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                video["type"] = 1
+                video["thisUId"] = "lut-video"
+                video.setdefault("effectChainList", []).append({"name": "Color", "effectList": [{
+                    "display": "AdjustColor",
+                    "id": "662E16ED-4524-4D13-AAE9-11DBA0C63E17",
+                    "paramList": [
+                        {"name": "bEnableLUT", "fxParam": {"paramType": 5, "unValue": 1}},
+                        {"name": "lut3dPath", "fxParam": {"paramType": 6, "unValue": "%Anonymous_dir%/Anon/Effect/test-red.cube"}},
+                        {"name": "alpha", "fxParam": {"paramType": 5, "unValue": 48}},
+                    ],
+                }]})
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_lut)
+            output = root / "output.wfp"
+            self.assertEqual(
+                preflight_clip_lut(
+                    source,
+                    clip_uid="lut-video",
+                    old_strength=48,
+                    new_strength=75,
+                )["matching_archive_occurrences"],
+                1,
+            )
+            result = replace_clip_lut(
+                source,
+                output,
+                clip_uid="lut-video",
+                old_strength=48,
+                new_strength=75,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertTrue(evaluate_project(output)["valid"])
+            diff = diff_projects(source, output)
+            self.assertEqual(
+                [change["path"] for change in diff["json_changes"]],
+                ["$.timelineInfos[0].trackInfos[1].clipList[0].effectChainList[0].effectList[0].paramList[2].fxParam.unValue"],
+            )
+
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                preflight_clip_lut(
+                    output,
+                    clip_uid="lut-video",
+                    old_strength=48,
+                    new_strength=80,
+                )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

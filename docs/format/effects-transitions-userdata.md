@@ -336,6 +336,29 @@ These observations prove existing-parameter replacement, not the valid range
 of every control, section enable/disable semantics, presets, auto white
 balance, LUT selection, HSL, or Curves.
 
+### Controlled LUT insertion and strength repeat
+
+On the same disposable clip, Color > Basic > LUT > Add accepted a tiny local
+`.cube` file. The first-use save inserted one `AdjustColor` effect and changed
+the Color chain name from `Effect` to `Color`. The LUT-specific fields were:
+
+```json
+{
+  "bEnableLUT": {"paramType": 5, "unValue": 1},
+  "lut3dPath": {"paramType": 6, "unValue": "%Anonymous_dir%/Anon/Effect/test-red.cube"}
+}
+```
+
+Filmora omits the strength field at its default 100. Repeating the visible
+Strength slider from 48 to 75 inserted/updated `alpha` as a `paramType: 5`
+scalar and changed only `alpha` semantically. A generated copy changing an
+existing 48 to 75 passed `eval-format`, opened in Filmora, and retained 75
+after Save As. The guarded `replace_clip_lut` writer therefore supports only
+an existing enabled `AdjustColor` LUT node with an existing `alpha` parameter,
+with strength in the observed 0–100 range. It never inserts the effect or
+rewrites `lut3dPath`; LUT file selection and first-use insertion remain outside
+the writer contract.
+
 ### Controlled Basic Color first-use insertion
 
 Applying Color > Basic > Light > Exposure to a clip with no prior color effect

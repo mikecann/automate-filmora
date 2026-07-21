@@ -9,6 +9,22 @@
 - Evidence: one `AdjustColor` effect was inserted with `u_exposure` as a direct `paramType: 3` scalar. Normal Color and Mask holding chains were also materialized. `eval-format` passed.
 - Boundary: this confirms first-use insertion for Basic Color only, not a generic writer.
 
+### 2026-07-21: LUT insertion and strength
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: opened Color > Basic > LUT, added the disposable local
+  `test-red.cube`, then repeated Strength from 48 to 75.
+- Before/after: `290-lut-baseline.wfp` → `291-lut-added.wfp` →
+  `292-lut-strength-48.wfp` → `293-lut-strength-75.wfp`
+- Evidence: first use inserted `AdjustColor.bEnableLUT` (`paramType: 5`, value
+  1) and `lut3dPath` (`paramType: 6`, normalized `%Anonymous_dir%/Anon/Effect/...`
+  path). The repeat changed only `AdjustColor.alpha` from 48 to 75. The
+  generated `294-lut-generated-75.wfp` passed format evaluation and survived
+  Filmora Save As as `295-lut-generated-roundtrip.wfp`, retaining `alpha: 75`.
+- Boundary: existing LUT strength is now a guarded writer. LUT selection,
+  path portability, first-use insertion, and default-100 omission remain
+  read-only.
+
 ### 2026-07-21: Upper-track overlay opacity
 
 - Filmora: 15.6.4.11894 on macOS
@@ -137,7 +153,8 @@ Filmora, while insertion remains open. Basic Color Temperature produced a clean 
 AdjustColor `u_temperature`. The subsequent sweep completed all visible Basic
 Color, Light, Sharpen, and Vignette scalar controls. Each was a one-parameter
 repeat; Sharpen was the only separate effect node. Presets, toggles, Auto White
-Balance, LUT, HSL, and Curves remain open.
+Balance, LUT file selection, HSL, and Curves remain open. Existing LUT strength
+is covered by the later guarded writer acceptance below.
 The next batch mapped the full HSL channel prefix set, all three Red HSL
 scalars, and one repeated luma Curves midpoint. Curves serialize the visible
 knot plus two derived Bezier-control arrays, so they remain read-only until the
@@ -534,6 +551,17 @@ passed evaluation, opened in Filmora, and its Save As copy
 `replace_clip_video_denoise` is therefore limited to replacement inside this
 existing enabled shape; model execution, insertion, and disabling remain out
 of scope.
+
+## LUT strength acceptance
+
+Adding a disposable `.cube` file under Color > Basic > LUT inserted
+`AdjustColor.bEnableLUT` and a normalized `lut3dPath`. Strength repeats from 48
+to 75 changed only `AdjustColor.alpha`. The generated
+`294-lut-generated-75.wfp` passed evaluation, opened in Filmora, and its Save As
+copy `295-lut-generated-roundtrip.wfp` retained `alpha: 75`.
+`replace_clip_lut` is therefore limited to changing an already-present alpha on
+an enabled existing LUT node. It does not insert the effect, select a file, or
+invent portable path values.
 
 ## Tracking control boundary
 

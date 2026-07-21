@@ -60,7 +60,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("color.curves", "RGB curves", "partial", "knots and derived controls mapped"),
     ("color.curves", "six Hue Saturation curve modes", "partial", "one mode edited"),
     ("color.wheels", "shadow midtone highlight red component", "partial", "conversion incomplete"),
-    ("color", "LUT selection and intensity", "open", "fields inventoried only"),
+    ("color", "LUT selection and intensity", "partial", "existing LUT strength alpha is writable; file/path selection remains open"),
     ("color", "Auto Color and white balance picker", "open", "no controlled pair"),
     ("audio", "volume gain", "writable", "edit-plan schema 6"),
     ("audio", "fade in", "writable", "edit-plan schema 7"),
