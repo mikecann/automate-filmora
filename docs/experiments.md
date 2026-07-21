@@ -93,6 +93,23 @@ from `AAAAAA==` to `AQAAAA==`. The action is therefore not a plain array splice;
 track deletion/cleanup remains read-only until the toolbar control and its
 state semantics are isolated from a UI-labelled experiment.
 
+### 2026-07-21: Linked clip unlink/relink flags
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: selected the linked video/audio pair and clicked the chain-slash
+  unlink control, then used the inverse chain control to relink it.
+- Before/after: `299-unlink-baseline.wfp` -> `301-link-control-repeat.wfp` ->
+  `302-unlink-all-selected.wfp`; repeated with `305-unlink-marquee.wfp` ->
+  `306-relink-repeat.wfp` -> `307-unlink-repeat.wfp`.
+- Evidence: unlink toggled `trackInfos[2].userData` key 14 and timeline
+  `userData` key 11003 from `AQAAAA==` to `AAAAAA==`; relink restored both.
+  Clip objects and their ranges, source IDs, instance IDs, and link fields were
+  unchanged. The same semantic diff repeated after a different selection path.
+- Boundary: the chain controls are mapped to a repeatable pair of opaque flags,
+  but their meaning and safe serialization are unconfirmed. Keep this feature
+  read-only until those payloads are isolated or a newer Filmora build exposes
+  a clearer representation.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol

@@ -190,6 +190,12 @@ class FilmoraProjectToolsTest(unittest.TestCase):
         )
         self.assertEqual(wb_row["status"], "partial")
         self.assertIn("Auto White Balance", wb_row["evidence"])
+        unlink_row = next(
+            item for item in features
+            if item["area"] == "timeline" and item["feature"] == "unlink and relink clips"
+        )
+        self.assertEqual(unlink_row["status"], "partial")
+        self.assertIn("opaque", unlink_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()

@@ -17,7 +17,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("timeline", "linked A/V move", "writable", "edit-plan schema 4"),
     ("timeline", "linked A/V start and end trim", "writable", "edit-plan schema 4"),
     ("timeline", "linked A/V split", "writable", "edit-plan schema 5"),
-    ("timeline", "unlink and relink clips", "open", "no controlled pair"),
+    ("timeline", "unlink and relink clips", "partial", "chain toolbar toggles opaque track/timeline flags; clip fields unchanged"),
     ("titles", "title text and style inspection", "mapped", "scriptBuf parser"),
     ("titles", "same-length title replacement", "writable", "edit-plan schema 2"),
     ("titles", "compound title-card clone", "writable", "source-aware clone audit"),

@@ -60,6 +60,24 @@ changed from `AAAAAA==` to `AQAAAA==`. The toolbar action therefore carries
 additional cleanup/state semantics. Track deletion is mapped as an observation,
 not as a writer contract.
 
+### Linked clip unlink/relink flags
+
+In Filmora 15.6.4.11894 on macOS, a disposable project with one linked video
+and audio pair was used to test the chain toolbar controls. Clicking the
+chain-slash unlink control, then saving, changed only two opaque base64 values:
+
+```text
+timelineInfos[0].trackInfos[2].userData[key=14].data: AQAAAA== -> AAAAAA==
+timelineInfos[0].userData[key=11003].data:             AQAAAA== -> AAAAAA==
+```
+
+The inverse chain control changed both values back. Repeating the unlink and
+relink sequence (`305-unlink-marquee.wfp` -> `306-relink-repeat.wfp` ->
+`307-unlink-repeat.wfp`) produced the same toggles. Clip records, ranges,
+`sourceUuid`, `thisUId`, and link identifiers did not change. This is a
+repeatable structural observation, but the two payloads remain opaque, so no
+unlink/relink writer is authorized.
+
 ## Canonical definitions and standalone copies
 
 Do not concatenate every `timelineInfos[]` array in the archive. In the studied
