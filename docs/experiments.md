@@ -37,6 +37,25 @@ A repeat Video 1 > Mute toggle (`217-track-mute-baseline.wfp` →
 no track object field. This confirms the current track-control boundary rather
 than identifying a writable key.
 
+### 2026-07-21: Track Manager insertion shape
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: opened the disposable `286-track-creation-baseline.wfp`, clicked
+  the timeline `+` button, kept `Add: 1` video track, changed audio `Add` to
+  `0`, kept `Placement: Above Track 1`, and confirmed. A second run kept the
+  default `Add: 1` for both video and audio.
+- Before/after: `286-track-creation-baseline.wfp` → `288-video-track-only.wfp`
+  and `286-track-creation-baseline.wfp` → `287-track-creation-added.wfp`
+- Evidence: the video-only run added two empty records, one `trackType: 2`
+  audio-side record with `trackTag: 3` and `userData` key 20 value
+  `BAAAAA==`, and one `trackType: 1` visual record with `trackTag: 4` and
+  `userData` key 21 value `AQAAAA==`. The UI showed `Video 2` and no second
+  visible audio lane. The default both-lanes run added the same pair plus a
+  second empty audio/visual pair. `eval-format` passed for every copy.
+- Boundary: this maps insertion shape and the hidden auxiliary pairing, but
+  not reorder, placement variants, deletion, or a safe UUID/userData generator.
+  Track creation remains read-only and no generic track writer is authorized.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol
@@ -161,7 +180,7 @@ Still open:
 
 - more transition modes and transition parameters;
 - more effect parameters and effect insertion/removal;
-- track creation, reorder, visibility, and solo;
+- track reorder, visibility, mute, lock, and solo;
 - compound creation and unpacking;
 - repeated experiment on the next Filmora build.
 

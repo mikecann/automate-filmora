@@ -20,13 +20,37 @@ Each `timelineInfos[]` entry has:
 - `trackInfos`: ordered track array.
 - resolution, aspect ratio, frame rate, sample rate, and audio bus metadata.
 
-Observed `trackType` values:
+Observed `trackType` values in the Filmora 15.6.4 macOS disposable-project
+experiments:
 
-- `1`: video or visual track.
-- `2`: audio track.
+- `1`: visual/video track. The ordinary visual clip carried `type: 1` and
+  `streamId: 0` on this track.
+- `2`: audio track. The linked audio clip carried `type: 2` and `streamId: 1`.
 
-`trackTag` appears to preserve UI ordering or pairing, but needs a controlled
-experiment before stronger claims.
+There is also an empty `trackType: 2` record at the head of the timeline that
+has the audio bus UUID but no visible clip. Treat it as a bus/holding track,
+not as a user-visible `Audio 1` lane.
+
+`trackTag` is a UI-order/pairing marker in these projects. A controlled Track
+Manager experiment started with one visual and one audio lane, then chose
+`Add: 1 video track(s)`, `Add: 0 audio track(s)`, `Placement: Above Track 1`.
+Filmora added these records:
+
+```json
+[
+  {"trackType": 2, "trackTag": 3, "clipList": [],
+   "userData": [{"key": 20, "data": "BAAAAA=="}]},
+  {"trackType": 1, "trackTag": 4, "clipList": [],
+   "userData": [{"key": 21, "data": "AQAAAA=="}]}
+]
+```
+
+The first is the new empty audio-side record and the second is the new empty
+visual lane. The UI showed `Video 2` and no additional visible audio lane.
+Adding one video and one audio lane created the same two records plus another
+empty audio/visual pair. This proves insertion shape and the fact that the
+operation is not a simple append, but reorder, placement variants, deletion,
+and durable UUID generation remain open. No track writer is authorized.
 
 ## Canonical definitions and standalone copies
 
