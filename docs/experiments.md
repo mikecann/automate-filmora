@@ -301,6 +301,16 @@ API version 3 and plan schema version 3 expose the accepted rotation and linked
 transition operations with selectors discovered from the current source. Earlier
 published schemas remain unchanged and supported.
 
+The transition-family boundary is now wider but still deliberately not generic.
+Applying `Fast Wipe Left` to the focused disposable selection produced
+`263-transition-fast-wipe.wfp`; repeating from the clean baseline produced
+`265-transition-fast-wipe-repeat-2.wfp`. Both passed `eval-format`. The stable
+fields were display `Fast Wipe Left`, ID
+`C8965C45-074B-4BF5-948E-D9373D10836C`, type `5`, and the same owner-side
+range rules. Filmora regenerated instance IDs, opaque key-3 payloads, effect
+ordering, and metadata. Therefore the family is mapped, but insertion remains
+unsupported until a single-owner minimal case isolates a safe copy shape.
+
 ## Existing linked A/V move acceptance
 
 A same-session undo/redo pair isolated the move of one transition-free linked

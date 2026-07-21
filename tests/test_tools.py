@@ -3089,6 +3089,42 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             )
             self.assertTrue(transition_probe["passed"], evaluation)
 
+    def test_map_profiles_fast_wipe_transition_resource_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_fast_wipe(timeline):
+                current = next(item for item in timeline["timelineInfos"] if item["timelineId"] == 1)
+                visual = next(
+                    clip
+                    for track in current["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                visual["postTransition"] = {
+                    "display": "Fast Wipe Left",
+                    "id": "C8965C45-074B-4BF5-948E-D9373D10836C",
+                    "thisUId": "fast-wipe-transition",
+                    "tlBegin": 10_000_000,
+                    "tlEnd": 20_000_000,
+                    "type": 5,
+                    "userData": [
+                        {"key": 80, "data": "AQAAAA==", "size": 4},
+                        {"key": 3, "data": "opaque", "size": 6},
+                        {"key": 8, "data": "AwAAAA==", "size": 4},
+                        {"key": 12, "data": "{}", "size": 2},
+                    ],
+                }
+
+            project = _rewrite_main_timeline(source, root / "fast-wipe.wfp", add_fast_wipe)
+            result = map_project(project)
+            transition = next(item for item in result["transitions"] if item["display"] == "Fast Wipe Left")
+            self.assertEqual(transition["id"], "C8965C45-074B-4BF5-948E-D9373D10836C")
+            self.assertEqual(transition["position"], "postTransition")
+            self.assertEqual(transition["duration_ticks"]["numeric_range"], [10_000_000, 10_000_000])
+            self.assertTrue(evaluate_project(project)["valid"])
+
     def test_format_eval_rejects_non_positive_transition_range(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

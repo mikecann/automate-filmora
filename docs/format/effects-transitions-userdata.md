@@ -650,8 +650,25 @@ the saved removal copy contained no transitions.
 
 This only proves an already-present linked visual Dissolve and audio fade with
 the exact IDs above, matching owner ranges, and transitions contained at the end
-of those clips. It does not authorize transition insertion, another transition
-asset, a pre-transition, or an unlinked edit.
+of those clips. It does not authorize a pre-transition or an unlinked edit.
+
+### Controlled Fast Wipe Left insertion
+
+On the same disposable two-clip graph, applying the `Fast Wipe Left` tile to the
+focused timeline selection added `postTransition` objects with a stable family
+shape: display `Fast Wipe Left`, ID
+`C8965C45-074B-4BF5-948E-D9373D10836C`, type `5`, and userData keys `80`, `3`,
+`8`, and `12` (the last is a 221-byte JSON resource description).
+
+The visual owner ranges were `14,800,000..34,800,000` and
+`34,800,000..50,000,000`; the nested title placement used its own matching
+range. Filmora also inserted the linked `audio/blender/transition-fade`
+objects. Repeating the same action from the clean baseline in
+`263-transition-fast-wipe.wfp` and `265-transition-fast-wipe-repeat-2.wfp`
+reproduced the same display, ID, range rules, and resource JSON. Instance IDs,
+opaque key-3 payloads, effect ordering, and generated metadata changed, so no
+generic insertion writer is justified yet. This maps another transition family
+without claiming that every transition asset shares the same resource payload.
 
 The format eval now requires every observed transition group to have a complete,
 positive numeric range. A future Filmora build failing that probe may represent

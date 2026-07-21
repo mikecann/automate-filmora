@@ -24,7 +24,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("titles", "arbitrary-length title auto-sizing", "partial", "scale derivation open"),
     ("transitions", "linked Dissolve insertion shape", "mapped", "controlled add and undo"),
     ("transitions", "linked Dissolve duration and removal", "writable", "edit-plan schema 3"),
-    ("transitions", "other transition families", "open", "corpus inventory only"),
+    ("transitions", "other transition families", "mapped", "Fast Wipe Left insertion repeated; owner-side shape confirmed"),
     ("video.transform", "position X and Y", "writable", "edit-plan schema 9"),
     ("video.transform", "uniform scale", "writable", "edit-plan schema 10"),
     ("video.transform", "rotation", "writable", "edit-plan schema 3"),
