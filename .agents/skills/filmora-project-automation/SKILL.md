@@ -156,6 +156,8 @@ existing clip's strength and enable fields, never first-use graph insertion.
 The static opacity writer is limited to an existing type-1 upper-track overlay
 with a parseable `pipBuf.Opacity` scalar; it does not synthesize overlays or
 edit keyframed opacity.
+The audio balance writer is likewise limited to one existing `Balance`
+parameter under `audio/effect/volume` and uses only the verified UI conversion.
 Schemas 1 through 9 remain
 immutable and supported.
 

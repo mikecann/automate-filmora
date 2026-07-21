@@ -507,6 +507,15 @@ reopened. This proves replacement only. A default clip with no serialized
 `VolumeGain`, fades, balance, equalizer settings, and automation remain outside
 the writer contract.
 
+### Controlled audio balance change
+
+On the same disposable type `2` audio clip, Sound Balance values of `25`, `50`,
+and `-50` stored under the existing `audio/effect/volume` node as a `Balance`
+parameter with `paramType: 2` values `0.625`, `0.75`, and `0.25`. The repeated
+conversion is `stored = (ui + 100) / 200`. The guarded
+`replace_clip_audio_balance` writer supports only this existing parameter and
+rejects missing or stale targets; first-use insertion remains unsupported.
+
 ### Controlled audio fade-in change
 
 On a disposable five-second type `2` audio clip, the first Basic Audio fade-in

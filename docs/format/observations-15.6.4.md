@@ -133,6 +133,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | linked A/V end trim | shorten a forward 1x pair by one second | changed both clips' `tlEnd`, `outPoint`, and `speed.offsetEnd` |
 | linked A/V start trim | shorten the same pair's start by one second | changed both clips' `tlBegin`, `inPoint`, and `speed.offset` |
 | audio volume repeat | change an existing gain from 3 dB to 6 dB | changed only `VolumeGain.fxParam.unValue` plus the per-save token |
+| audio balance repeat | set Sound Balance to 25, 50, and -50 | changed one existing `Balance` scalar; UI-to-storage conversion was `(ui + 100) / 200` |
 | audio fade-in repeat | change an existing fade from 1 s to 2 s | changed only `FadeInTime.fxParam.unValue` plus the per-save token |
 | audio fade-out repeat | change an existing fade from 1 s to 2 s | changed only `FadeOutTime.fxParam.unValue` plus the per-save token |
 

@@ -87,6 +87,10 @@ first-use holding chains.
 inside a genuine upper-track overlay's `pipBuf`; it rejects missing overlays,
 keyframed opacity, stale values, and first-use insertion.
 
+`replace_clip_audio_balance` edits an existing audio `Balance` parameter using
+the verified Filmora conversion between the -100..100 UI range and its stored
+0..1 scalar.
+
 Repeat the same audit explicitly with:
 
 ```bash

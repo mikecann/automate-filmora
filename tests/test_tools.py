@@ -52,6 +52,7 @@ from filmora_wfp import (
     preflight_clip_fade_out,
     preflight_clip_position,
     preflight_clip_opacity,
+    preflight_clip_audio_balance,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -1486,6 +1487,35 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 preflight_clip_opacity(
                     source, clip_uid="video-clip", old_opacity=40, new_opacity=25
                 )
+
+    def test_existing_audio_balance_preflight_normalizes_ui_range(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_project(root / "base.wfp")
+            def add_audio_balance(timeline):
+                timeline["timelineInfos"][0]["trackInfos"].append({
+                    "trackType": 1,
+                    "trackTag": 2,
+                    "clipList": [{
+                        "type": 2,
+                        "thisUId": "audio-clip",
+                        "effectChainList": [{
+                            "effectList": [{
+                                "id": "audio/effect/volume",
+                                "paramList": [{
+                                    "name": "Balance",
+                                    "fxParam": {"paramType": 2, "unValue": 0.625},
+                                }],
+                            }],
+                        }],
+                    }],
+                })
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_audio_balance)
+            result = preflight_clip_audio_balance(
+                source, clip_uid="audio-clip", old_balance=25, new_balance=-50
+            )
+            self.assertEqual(result["new_stored_balance"], "0.25")
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

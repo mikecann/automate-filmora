@@ -406,6 +406,25 @@ exactly one existing finite `VolumeGain` parameter. It does not claim support
 for inserting a missing parameter or recreating Filmora's first-use effect
 normalization. Schemas 1 through 5 remain unchanged and supported.
 
+## Existing audio clip sound-balance acceptance
+
+On the same disposable five-second clip, repeated Basic Audio Sound Balance
+edits from `0` to `25`, `25` to `50`, and `50` to `-50` isolated one scalar:
+`Balance.fxParam.unValue` changed to `0.625`, `0.75`, and `0.25` respectively.
+The parameter uses `paramType: 2` and the observed conversion is
+`stored = (ui + 100) / 200`.
+
+The replacement-only writer changed an existing `-50` value to `25` with one
+semantic diff. Filmora 15.6.4.11894 opened the generated copy and visibly
+showed `25.00`, saved it to a new path, and retained `Balance: 0.625` after the
+round trip. First-use insertion, keyframes, and ambiguous/missing Balance
+parameters remain unsupported.
+
+The public low-level writer is `replace_clip_audio_balance`. Target discovery
+is intentionally not wired into the edit-plan API yet. It lists only audio
+clips with exactly one existing finite Balance parameter when called directly;
+first-use insertion and keyframes remain outside the contract.
+
 ## Existing audio clip fade-in acceptance
 
 On the same disposable five-second clip, the first Basic Audio fade-in change
