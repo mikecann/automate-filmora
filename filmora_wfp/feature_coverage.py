@@ -12,7 +12,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("project", "WFP archive validation", "writable", "archive and eval-format probes"),
     ("project", "WFP bundle discovery", "mapped", "corpus survey"),
     ("project", "timeline graph and nested compounds", "mapped", "canonical map"),
-    ("project", "track creation and reorder", "partial", "Track Manager insertion shape mapped; reorder and placement variants open"),
+    ("project", "track creation and reorder", "partial", "Track Manager insertion and empty-track cleanup shapes mapped; reorder and placement variants open"),
     ("project", "track visibility lock mute solo", "partial", "fields inventoried, enums open"),
     ("timeline", "linked A/V move", "writable", "edit-plan schema 4"),
     ("timeline", "linked A/V start and end trim", "writable", "edit-plan schema 4"),

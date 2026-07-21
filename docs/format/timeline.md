@@ -52,6 +52,14 @@ empty audio/visual pair. This proves insertion shape and the fact that the
 operation is not a simple append, but reorder, placement variants, deletion,
 and durable UUID generation remain open. No track writer is authorized.
 
+A follow-up toolbar action on the same disposable copy removed the two empty
+records. The resulting timeline had only the original three records, but this
+was not a pure list deletion: the surviving visual track gained
+`userData[{"key": 14, "data": "AQAAAA=="}]`, and timeline userData key 11003
+changed from `AAAAAA==` to `AQAAAA==`. The toolbar action therefore carries
+additional cleanup/state semantics. Track deletion is mapped as an observation,
+not as a writer contract.
+
 ## Canonical definitions and standalone copies
 
 Do not concatenate every `timelineInfos[]` array in the archive. In the studied

@@ -56,6 +56,14 @@ than identifying a writable key.
   not reorder, placement variants, deletion, or a safe UUID/userData generator.
   Track creation remains read-only and no generic track writer is authorized.
 
+A follow-up toolbar action on `288-video-track-only.wfp` removed both empty
+records and was saved as `289-toolbar-track-change.wfp`. The visible timeline
+returned to `Video 1` plus `Audio 1`, but the surviving visual track gained
+`userData` key 14 with value `AQAAAA==`, and timeline userData key 11003 changed
+from `AAAAAA==` to `AQAAAA==`. The action is therefore not a plain array splice;
+track deletion/cleanup remains read-only until the toolbar control and its
+state semantics are isolated from a UI-labelled experiment.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol

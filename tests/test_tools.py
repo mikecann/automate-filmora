@@ -174,7 +174,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             if item["area"] == "project" and item["feature"] == "track creation and reorder"
         )
         self.assertEqual(track_row["status"], "partial")
-        self.assertIn("Track Manager insertion shape", track_row["evidence"])
+        self.assertIn("Track Manager insertion", track_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()
