@@ -70,7 +70,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("audio", "denoise ducking normalization voice effects", "partial", "Normal Denoise enable and strength repeated; other audio AI controls open"),
     ("video.analysis", "Motion Blur", "external_dependency", "toggle starts model update and processing"),
     ("video.analysis", "Stabilization", "writable", "existing enabled smooth replacement; generated copy survived Filmora Save As"),
-    ("video.analysis", "Video Denoise and Lens Correction", "open", "UI inventoried only"),
+    ("video.analysis", "Video Denoise and Lens Correction", "partial", "Video Denoise status and sigma mapped with guarded writer; Lens Correction open"),
     ("video.ai", "AI Video Enhancer modes", "external_dependency", "credit and model UI only"),
     ("video.ai", "AI Object Remover", "external_dependency", "UI inventoried only"),
     ("video.tracking", "Motion and Planar Tracking", "open", "UI inventoried only"),

@@ -57,6 +57,7 @@ from filmora_wfp import (
     preflight_clip_hsl,
     preflight_clip_equalizer,
     preflight_clip_stabilization,
+    preflight_clip_video_denoise,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -75,6 +76,7 @@ from filmora_wfp import (
     replace_clip_hsl,
     replace_clip_equalizer,
     replace_clip_stabilization,
+    replace_clip_video_denoise,
     replace_clip_blend_mode,
     replace_linked_transition_duration,
     replace_title_text,
@@ -1734,6 +1736,53 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     old_smooth=5.0,
                     new_smooth=9.0,
                 )
+
+    def test_existing_video_denoise_sigma_replacement_is_guarded_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_denoise(timeline):
+                video = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                video["type"] = 1
+                video["thisUId"] = "video-denoise"
+                video["image_denoise"] = {
+                    "cache_mode": 0,
+                    "sigma": 20.0,
+                    "status": 1,
+                    "version": 1.0,
+                }
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_denoise)
+            output = root / "output.wfp"
+            self.assertEqual(
+                preflight_clip_video_denoise(
+                    source,
+                    clip_uid="video-denoise",
+                    old_sigma=20.0,
+                    new_sigma=40.0,
+                )["matching_archive_occurrences"],
+                1,
+            )
+            result = replace_clip_video_denoise(
+                source,
+                output,
+                clip_uid="video-denoise",
+                old_sigma=20.0,
+                new_sigma=40.0,
+            )
+            self.assertTrue(result["audit"]["valid"], result)
+            self.assertTrue(evaluate_project(output)["valid"])
+            diff = diff_projects(source, output)
+            self.assertEqual(
+                [change["path"] for change in diff["json_changes"]],
+                ["$.timelineInfos[0].trackInfos[1].clipList[0].image_denoise.sigma"],
+            )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

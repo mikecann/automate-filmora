@@ -87,6 +87,11 @@ from .stabilization import (
     preflight_clip_stabilization,
     replace_clip_stabilization,
 )
+from .video_denoise import (
+    audit_clip_video_denoise_copy,
+    preflight_clip_video_denoise,
+    replace_clip_video_denoise,
+)
 from .horizontal_flip import (
     audit_clip_horizontal_flip_copy,
     preflight_clip_horizontal_flip,
@@ -208,6 +213,7 @@ __all__ = [
     "audit_clip_hsl_copy",
     "audit_clip_equalizer_copy",
     "audit_clip_stabilization_copy",
+    "audit_clip_video_denoise_copy",
     "audit_clip_blend_mode_copy",
     "audit_linked_transition_duration_copy",
     "audit_linked_transition_removal_copy",
@@ -250,6 +256,7 @@ __all__ = [
     "preflight_clip_hsl",
     "preflight_clip_equalizer",
     "preflight_clip_stabilization",
+    "preflight_clip_video_denoise",
     "preflight_clip_blend_mode",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
@@ -267,6 +274,7 @@ __all__ = [
     "replace_clip_hsl",
     "replace_clip_equalizer",
     "replace_clip_stabilization",
+    "replace_clip_video_denoise",
     "replace_clip_blend_mode",
     "replace_linked_transition_duration",
     "remove_linked_transition",

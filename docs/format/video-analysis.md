@@ -30,9 +30,26 @@ toggle the status flag. A generated `5.0 -> 9.0` copy opened in Filmora,
 survived Save As, and retained `smooth: 9.0`; UIDs and other save metadata were
 regenerated as expected.
 
+## Video Denoise
+
+Video > Basic > Video Denoise uses a parallel existing clip object:
+
+```json
+{"cache_mode": 0, "sigma": 20.0, "status": 0, "version": 1.0}
+```
+
+Enabling it changed only `image_denoise.status` to `1`. After Filmora finished
+its local model processing, changing Smoothness from the normalized default
+changed only `image_denoise.sigma`, from `20.0` to `40.0`. The two UI saves
+passed `eval-format`.
+
+`replace_clip_video_denoise` supports replacement of an existing enabled object
+with this exact shape and a `0..100` sigma value. A generated `20.0 -> 40.0`
+copy opened in Filmora, survived Save As, and retained `sigma: 40.0`. It does
+not insert the object, run the model update, or toggle the status flag.
+
 ## Still unverified
 
-Video Denoise and Lens Correction have visible controls but no controlled
-before/after pair yet. Motion Blur and the AI panels depend on processing,
-models, or credits and remain external or incomplete until a local serialized
-result can be captured.
+Lens Correction has a visible control but no controlled before/after pair yet.
+Motion Blur and the AI panels depend on processing, models, or credits and
+remain external or incomplete until a local serialized result can be captured.

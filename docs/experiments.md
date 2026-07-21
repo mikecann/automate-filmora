@@ -496,6 +496,18 @@ same `smooth: 9.0` state. `replace_clip_stabilization` therefore supports only
 replacement inside this exact existing enabled shape; insertion, analysis data,
 and disabling remain unsupported.
 
+## Video Denoise acceptance
+
+Enabling Video Denoise on the normalized follow-up changed only
+`image_denoise.status` from `0` to `1`. After Filmora completed its local model
+processing, changing Smoothness from `20.0` to `40.0` changed only
+`image_denoise.sigma`. The generated `281-video-denoise-generated-40.wfp`
+passed evaluation, opened in Filmora, and its Save As copy
+`282-video-denoise-generated-roundtrip.wfp` retained `sigma: 40.0`.
+`replace_clip_video_denoise` is therefore limited to replacement inside this
+existing enabled shape; model execution, insertion, and disabling remain out
+of scope.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute
