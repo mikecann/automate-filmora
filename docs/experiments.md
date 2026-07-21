@@ -183,8 +183,9 @@ Filmora, while insertion remains open. Basic Color Temperature produced a clean 
 AdjustColor `u_temperature`. The subsequent sweep completed all visible Basic
 Color, Light, Sharpen, and Vignette scalar controls. Each was a one-parameter
 repeat; Sharpen was the only separate effect node. Presets, toggles, Auto White
-Balance, LUT file selection, HSL, and Curves remain open. Existing LUT strength
-is covered by the later guarded writer acceptance below.
+Balance, LUT file selection, HSL, and Curves remain partial/read-only where
+their insertion, derived, or opaque payload boundaries are not proven. Existing
+LUT strength is covered by the later guarded writer acceptance below.
 The next batch mapped the full HSL channel prefix set, all three Red HSL
 scalars, and one repeated luma Curves midpoint. Curves serialize the visible
 knot plus two derived Bezier-control arrays, so they remain read-only until the
@@ -228,6 +229,22 @@ the point times, values, interpolation, and MD5. Derivatives varied slightly
 with the exact mouse coordinate, so derivative and checksum generation remain
 opaque and no custom-ramp writer is authorized.
 
+The remaining Speed control was checked separately on the same disposable
+linked clip. The `AI Frame Interpolation` field displayed `Frame Sampling`,
+but its selector did not expose another option at either 2.0x or 0.5x speed.
+The saved pair `317-ai-selector-baseline.wfp` ->
+`318-ai-selector-attempt.wfp` contained no `speed` field change. A no-control
+repeat (`318` -> `319-ai-selector-noop.wfp`) changed the same opaque timeline
+userData slot, proving that apparent selector churn was ordinary Save As noise.
+No mode payload could be isolated, so this remains read-only until a build with
+an active interpolation model or enabled selector provides a real before/after.
+
+The Transform > Path Curve toggle was then isolated from the same fixture.
+`314-path-curve-baseline.wfp` -> `315-path-curve-enabled.wfp` and the repeat
+`315` -> `316` each changed only `timelineInfos[0].userData[0].data`, with no
+clip path fields. The regenerated base64 payload differed on each save, so the
+toggle is documented as an opaque timeline flag rather than a writer contract.
+
 A Basic Compositing opacity attempt on the sole base-track clip was a negative
 control: Filmora showed the UI but persisted no opacity change. Static opacity
 and blend-mode work now explicitly requires a true upper-track overlay fixture.
@@ -242,13 +259,12 @@ Processing was stopped and the feature disabled; the resulting Save As had no
 semantic delta. A completed model-backed run is required before its visible
 Range, Intensity, and Direction controls can be mapped.
 
-Still open:
-
-- more transition modes and transition parameters;
-- more effect parameters and effect insertion/removal;
-- track reorder, visibility, mute, lock, and solo;
-- compound creation and unpacking;
-- repeated experiment on the next Filmora build.
+The current curated feature matrix has no rows in the unresolved `open` state.
+Remaining work is explicitly classified as `partial` (known structure with
+unsupported variants or opaque payloads) or `external_dependency` (model- or
+credit-backed processing that cannot be reproduced by a local project-file
+writer). This keeps the matrix honest without pretending those boundaries are
+complete API contracts.
 
 ### 2026-07-16 external corpus survey
 
@@ -264,9 +280,9 @@ It does not confirm enum semantics. See
 [`case-studies/external-backup-corpus.md`](case-studies/external-backup-corpus.md).
 
 The Basic Title text experiment is complete for mirrored text serialization and
-byte-size handling. Arbitrary text auto-sizing remains open because Filmora also
-updates `ScaleX` and the transform effect's `Scale_x` when the replacement width
-changes.
+byte-size handling. Arbitrary text auto-sizing remains partial because Filmora
+also updates `ScaleX` and the transform effect's `Scale_x` when the replacement
+width changes.
 
 ### 2026-07-16 controlled batch
 

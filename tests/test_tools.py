@@ -171,7 +171,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             sum(result["summary"]["by_status"].values()), len(features)
         )
         self.assertIn("writable", result["summary"]["by_status"])
-        self.assertIn("open", result["summary"]["by_status"])
+        self.assertNotIn("open", result["summary"]["by_status"])
         track_row = next(
             item for item in features
             if item["area"] == "project" and item["feature"] == "track creation and reorder"
@@ -202,6 +202,18 @@ class FilmoraProjectToolsTest(unittest.TestCase):
         )
         self.assertEqual(custom_ramp_row["status"], "partial")
         self.assertIn("keyframe shape", custom_ramp_row["evidence"])
+        path_row = next(
+            item for item in features
+            if item["area"] == "video.transform" and item["feature"] == "path curve"
+        )
+        self.assertEqual(path_row["status"], "partial")
+        self.assertIn("opaque", path_row["evidence"])
+        ai_interpolation_row = next(
+            item for item in features
+            if item["area"] == "speed" and item["feature"] == "AI frame interpolation"
+        )
+        self.assertEqual(ai_interpolation_row["status"], "partial")
+        self.assertIn("Frame Sampling", ai_interpolation_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()
@@ -209,7 +221,7 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertEqual(cli_main(["feature-coverage", "--status", "open", "--json"]), 0)
         result = json.loads(output.getvalue())
         self.assertEqual(result["filter"], "open")
-        self.assertTrue(result["features"])
+        self.assertEqual(result["features"], [])
         self.assertTrue(all(item["status"] == "open" for item in result["features"]))
         self.assertGreater(result["summary"]["total"], len(result["features"]))
 

@@ -100,6 +100,7 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | position X repeat | change existing X from 100 px to 200 px at 1280x720 | changed only `Position_x.fxParam.unValue` from `0.578125` to `0.65625` plus save metadata |
 | position Y repeat | change existing Y from 100 px to 200 px at 1280x720 | changed only `Position_y.fxParam.unValue` from `0.3611111044883728` to `0.2222222238779068` plus save metadata |
 | linked uniform scale repeat | change existing Width/Height from 80% to 60% | changed only `Scale_x` and `Scale_y` from `80.0` to `60.0` plus save metadata |
+| Path Curve toggle repeat | toggle Video > Basic > Transform > Path Curve twice | each save changed only opaque `timelineInfos[0].userData[0].data`; no clip path fields appeared |
 | horizontal flip repeat | toggle an existing horizontal flip off and back on | toggled `enable: false` and key-101 data `AAAAAA==`/`AQAAAA==`; generated copy survived Filmora Save As |
 | vertical flip repeat | toggle an existing vertical flip off and back on | same two-part state as horizontal under `video/effect/vertical_filp`; guarded generated copy survived Filmora Save As; insertion remains unverified |
 | uniform corner radius repeat and boundaries | change 10% to 20%, then probe 0, -1, 99, and 100 | four named values store positive 1–100 directly; zero removes the quartet; guarded 100-to-75 copy survived Filmora Save As |
@@ -109,6 +110,8 @@ Each step was saved to a new `.wfp` path in the same Filmora build.
 | Maintain Pitch off | toggle off on normalized 1.50x linked pair | added `speedWithPitch: true` to only the type-2 audio clip; field naming is inverse to the UI label |
 | Reverse Speed on | reverse linked pair carrying Vortex In animation | set both `speed.reverse` flags and mirrored all visual animation keys across the clip duration |
 | stock speed ramps | independently apply Montage, Hero, Bullet Time, Jumper, Flash In, and Flash Out | mapped identical linked A/V interpolation-9 curves and curve-integrated durations; presets clear reverse/pitch mode and retime visual animation |
+| custom speed ramp point | drag one Customize point from 1x to about 5x, then repeat | inserted a repeatable five-point linked curve and retimed both clips; derivatives and MD5 remain opaque |
+| AI frame interpolation selector | attempt `Frame Sampling` selector at 0.5x and 2.0x, then no-control Save As repeat | no `speed` mode field appeared; opaque timeline userData churn was reproduced as Save As noise; selector remains read-only/unavailable |
 | Basic Color temperature repeat | change existing Temperature from 10 to 20 | changed only AdjustColor `u_temperature` from `10.0` to `20.0` plus save metadata |
 | Basic Color scalar sweep | repeat Tint, Vibrance, Saturation, Exposure, Brightness, Contrast, Highlight, Shadow, White, and Black | each changed exactly one named AdjustColor scalar from `10.0` to `20.0` |
 | Basic Color first use | set Exposure to 10 on a clip with no Color effect, then Save As | inserted one `AdjustColor` effect with `u_exposure=10.0`; generated file passed eval and Filmora round trip |

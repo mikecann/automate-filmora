@@ -161,6 +161,25 @@ with both still visible. Every format probe passed. This proves positive linked
 uniform replacement only. Missing scale parameters, zero or negative scale,
 and unlocked non-uniform Width/Height remain unsupported.
 
+### Controlled Path Curve toggle
+
+Filmora 15.6.4.11894 on macOS was tested with the disposable linked clip after
+the inspector's Transform section was isolated. Toggling Video > Basic >
+Transform > Path Curve and saving `314-path-curve-baseline.wfp` as
+`315-path-curve-enabled.wfp` changed only:
+
+```text
+timelineInfos[0].userData[0].data
+```
+
+The inverse UI action was repeated in a second save (`315-path-curve-enabled`
+to `316-path-curve-repeat`). It changed the same single userData slot again,
+but to a newly generated opaque base64 payload. No clip transform object,
+position, scale, or path/curve field appeared in either diff. Both outputs
+passed `eval-format`. This proves the control has timeline-level state, not a
+safe serializable path curve representation; the payload remains opaque and no
+path-curve writer is authorized.
+
 ### Controlled horizontal flip change
 
 Filmora spells the effect identifier `video/effect/horizontal_filp`. On an
@@ -292,7 +311,8 @@ On the five-second source, the stock curves were:
 Each point also has preset-specific left/right derivatives and the payload has
 an opaque MD5. The one-tick Flash In/Out duration difference is retained as an
 observation, not rounded away. Custom ramp editing, the Customize card, and AI
-frame-interpolation modes remain open. No speed writer is authorized.
+frame-interpolation modes remain outside the writer contract. No speed writer
+is authorized.
 
 ### Controlled custom speed-ramp point edit
 
@@ -322,6 +342,20 @@ opaque `MD5`. The repeat reproduced the point times, values, interpolation, and
 MD5 exactly; only the floating-point derivative fields varied slightly with
 the pixel drag. This maps the graph shape and retiming boundary, but not the
 derivative or checksum algorithms. Custom-ramp writing remains unsupported.
+
+### AI frame-interpolation selector boundary
+
+The same Filmora build displayed an `AI Frame Interpolation` field with the
+current value `Frame Sampling` in the Uniform Speed inspector. A saved baseline
+(`317-ai-selector-baseline.wfp`) was followed by a click/keyboard attempt on
+the selector (`318-ai-selector-attempt.wfp`). The only semantic-looking diff
+was the already-known opaque `timelineInfos[0].userData[0].data` slot. A
+no-control Save As repeat (`319-ai-selector-noop.wfp`) changed that same slot
+again, proving it is save noise rather than an interpolation enum.
+
+The selector exposed no alternate option at either 0.5x or 2.0x on the
+disposable clip. No `speed` field or mode payload was isolated, so the control
+is documented as an availability/model boundary and remains read-only.
 
 ### Controlled Basic Color temperature change
 

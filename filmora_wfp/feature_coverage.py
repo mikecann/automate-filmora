@@ -32,7 +32,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.transform", "vertical flip", "writable", "direct guarded writer"),
     ("video.transform", "anchor point X and Y", "writable", "direct guarded writer"),
     ("video.transform", "uniform corner radius", "writable", "direct guarded writer"),
-    ("video.transform", "path curve", "open", "UI inventoried only"),
+    ("video.transform", "path curve", "partial", "toggle repeat changes one opaque timeline userData payload; clip path fields unchanged"),
     ("video.effects", "ColorBlur typed parameters", "partial", "exact-build backup corpus; UI repeat pending"),
     ("video.effects", "Allpurpose Position effect", "partial", "exact-build backup corpus; keyframe payload opaque"),
     ("text.effects", "Text Dropout speed and scale", "partial", "exact-build backup corpus; UI repeat pending"),
@@ -48,7 +48,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("speed", "Reverse Speed", "mapped", "linked flags and animation mirroring"),
     ("speed", "stock speed ramps", "mapped", "six independent preset curves"),
     ("speed", "custom ramp editing", "partial", "custom keyframe shape and linked retiming mapped; derivative and MD5 generation remain opaque"),
-    ("speed", "AI frame interpolation", "open", "custom dropdown unresolved"),
+    ("speed", "AI frame interpolation", "partial", "Frame Sampling selector remains unavailable in disposable 0.5x and 2x fixtures; serialized mode field unresolved"),
     ("color.basic", "temperature tint vibrance saturation", "mapped", "direct scalar repeats"),
     ("color.basic", "first-use AdjustColor insertion", "mapped", "controlled Exposure insertion and Filmora round trip"),
     ("color.light", "exposure brightness contrast highlights shadows whites blacks", "mapped", "direct scalar repeats"),
@@ -80,7 +80,10 @@ _ROWS: List[Tuple[str, str, str, str]] = [
 def feature_coverage(status: Optional[str] = None) -> Dict[str, Any]:
     """Return the coverage matrix, optionally filtered without altering totals."""
 
-    statuses = {row[2] for row in _ROWS}
+    # Keep the vocabulary stable even when a future audit has no currently-open
+    # rows. Consumers can still request `--status open` and receive an empty
+    # result while the matrix records that there are no unresolved rows.
+    statuses = {"writable", "mapped", "partial", "open", "external_dependency"}
     if status is not None and status not in statuses:
         raise ValueError("Unknown coverage status: {0}".format(status))
     features = [
