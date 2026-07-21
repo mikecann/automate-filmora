@@ -436,6 +436,23 @@ is intentionally not wired into the edit-plan API yet. It lists only audio
 clips with exactly one existing finite Balance parameter when called directly;
 first-use insertion and keyframes remain outside the contract.
 
+## Existing audio equalizer preset acceptance
+
+The disposable audio fixture already contained an empty
+`audio/effect/equalizer` node. Selecting `Rock` added nine `paramType: 2`
+bands. Repeating `Rock` -> `Pop` added the `2kHz` band and changed the other
+values and positions; repeating `Pop` -> `Rock` removed it again. This is a
+preset-list replacement, not a scalar mapping.
+
+The guarded `replace_clip_equalizer` writer supports only an existing complete
+`Rock` or `Pop` list. The real Filmora source
+`251-equalizer-rock-baseline.wfp` produced
+`255-equalizer-pop-generated.wfp`; Filmora opened it and Save As produced
+`256-equalizer-pop-generated-roundtrip.wfp`. Both generated and round-tripped
+archives passed format evaluation, and the round-trip retained all ten `Pop`
+bands. Custom curves, first-use node insertion, and other presets remain
+unsupported.
+
 ## Existing audio clip fade-in acceptance
 
 On the same disposable five-second clip, the first Basic Audio fade-in change

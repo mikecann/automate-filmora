@@ -108,6 +108,11 @@ parameters, missing fields, and stale values.
 the observed `Normal`, `Multiply`, and `Screen` values. It does not normalize
 numeric `Normal`, synthesize overlays, or edit keyframes.
 
+`replace_clip_equalizer` changes one existing audio equalizer preset between
+the two presets confirmed in Filmora 15.6.4: `Rock` and `Pop`. It replaces the
+whole observed band list, so it rejects custom curves, unknown presets, and
+missing equalizer nodes rather than guessing their serialization.
+
 Repeat the same audit explicitly with:
 
 ```bash

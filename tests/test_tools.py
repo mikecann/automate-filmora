@@ -55,6 +55,7 @@ from filmora_wfp import (
     preflight_clip_audio_balance,
     preflight_clip_blend_mode,
     preflight_clip_hsl,
+    preflight_clip_equalizer,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -71,6 +72,7 @@ from filmora_wfp import (
     replace_clip_vertical_flip,
     replace_clip_volume_gain,
     replace_clip_hsl,
+    replace_clip_equalizer,
     replace_clip_blend_mode,
     replace_linked_transition_duration,
     replace_title_text,
@@ -1608,6 +1610,63 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                  if "BlendMode" in c["path"]],
                 ["$.timelineInfos[0].trackInfos[1].clipList[1].pipBuf.$embedded_json.BlendMode"],
             )
+
+    def test_existing_equalizer_preset_replacement_is_guarded_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            rock = [
+                ("31Hz", -1.08), ("63Hz", 2.88), ("125Hz", 2.16),
+                ("250Hz", 2.88), ("500Hz", -1.08), ("1kHz", -1.08),
+                ("4kHz", 2.16), ("8kHz", 2.16), ("16kHz", 3.96),
+            ]
+
+            def add_equalizer(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][0]["clipList"].append({
+                    "type": 2,
+                    "thisUId": "equalizer-audio",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "effectChainList": [{"effectList": [{
+                        "id": "audio/effect/equalizer",
+                        "paramList": [
+                            {"name": name, "fxParam": {"paramType": 2, "unValue": value}}
+                            for name, value in rock
+                        ],
+                    }]}],
+                })
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_equalizer)
+            output = root / "output.wfp"
+            self.assertEqual(
+                preflight_clip_equalizer(
+                    source,
+                    clip_uid="equalizer-audio",
+                    old_preset="Rock",
+                    new_preset="Pop",
+                )["matching_archive_occurrences"],
+                1,
+            )
+            result = replace_clip_equalizer(
+                source,
+                output,
+                clip_uid="equalizer-audio",
+                old_preset="Rock",
+                new_preset="Pop",
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            # Pop changes values and the param-list shape because it inserts 2kHz
+            # and removes/reorders the Rock-only positions.
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 12)
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                preflight_clip_equalizer(
+                    output,
+                    clip_uid="equalizer-audio",
+                    old_preset="Rock",
+                    new_preset="Pop",
+                )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

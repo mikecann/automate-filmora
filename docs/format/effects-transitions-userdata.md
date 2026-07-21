@@ -31,6 +31,16 @@ segmentation, inner shadow, pixelate, masks, stock overlays, and a path-graphic
 chain. Treat display names as evidence only; effect IDs and availability remain
 build-specific.
 
+### Equalizer preset replacement
+
+The audio equalizer is an `audio/effect/equalizer` node. In Filmora 15.6.4, the
+observed `Rock` preset serializes nine `paramType: 2` bands, while `Pop`
+serializes ten bands because it includes `2kHz` and removes the Rock-only
+shape. A controlled Rock -> Pop -> Rock sequence confirmed the exact band
+names and values. `replace_clip_equalizer` therefore replaces the complete
+existing list only when it exactly matches one of those two presets. It does
+not synthesize a missing node or infer custom equalizer curves.
+
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 

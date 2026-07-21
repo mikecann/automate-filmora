@@ -1,6 +1,6 @@
 """Evidence-driven tools for Wondershare Filmora project files."""
 
-__version__ = "0.13.8"
+__version__ = "0.13.9"
 
 from .analysis import inspect_project, list_titles, validate_project
 from .anchor import (
@@ -28,6 +28,7 @@ from .audio_fade_out import (
 )
 from .audio_balance import audit_clip_audio_balance_copy, preflight_clip_audio_balance, replace_clip_audio_balance
 from .hsl import audit_clip_hsl_copy, preflight_clip_hsl, replace_clip_hsl
+from .equalizer import audit_clip_equalizer_copy, preflight_clip_equalizer, replace_clip_equalizer
 from .audit import audit_title_card_copy
 from .corpus import discover_projects, survey_projects
 from .corner_radius import (
@@ -200,6 +201,7 @@ __all__ = [
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
     "audit_clip_hsl_copy",
+    "audit_clip_equalizer_copy",
     "audit_clip_blend_mode_copy",
     "audit_linked_transition_duration_copy",
     "audit_linked_transition_removal_copy",
@@ -240,6 +242,7 @@ __all__ = [
     "preflight_clip_vertical_flip",
     "preflight_clip_volume_gain",
     "preflight_clip_hsl",
+    "preflight_clip_equalizer",
     "preflight_clip_blend_mode",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
@@ -255,6 +258,7 @@ __all__ = [
     "replace_clip_vertical_flip",
     "replace_clip_volume_gain",
     "replace_clip_hsl",
+    "replace_clip_equalizer",
     "replace_clip_blend_mode",
     "replace_linked_transition_duration",
     "remove_linked_transition",

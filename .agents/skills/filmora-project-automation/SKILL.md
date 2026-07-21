@@ -176,6 +176,10 @@ known channel/suffix name; it does not insert HSL parameters or edit keyframes.
 The Blend Mode writer is limited to an existing overlay `pipBuf` string mode
 among the observed `Normal`, `Multiply`, and `Screen` values; it does not
 normalize numeric `Normal` or synthesize overlays.
+The equalizer writer is limited to one existing `audio/effect/equalizer` node
+whose complete band list exactly matches the observed `Rock` or `Pop` preset.
+It can replace one of those presets with the other. Custom curves, first-use
+insertion, and any unobserved preset remain unsupported.
 Schemas 1 through 9 remain
 immutable and supported.
 
