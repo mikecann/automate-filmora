@@ -47,7 +47,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("speed", "Maintain Pitch", "mapped", "inverse speedWithPitch flag"),
     ("speed", "Reverse Speed", "mapped", "linked flags and animation mirroring"),
     ("speed", "stock speed ramps", "mapped", "six independent preset curves"),
-    ("speed", "custom ramp editing", "open", "derivative and MD5 generation open"),
+    ("speed", "custom ramp editing", "partial", "custom keyframe shape and linked retiming mapped; derivative and MD5 generation remain opaque"),
     ("speed", "AI frame interpolation", "open", "custom dropdown unresolved"),
     ("color.basic", "temperature tint vibrance saturation", "mapped", "direct scalar repeats"),
     ("color.basic", "first-use AdjustColor insertion", "mapped", "controlled Exposure insertion and Filmora round trip"),

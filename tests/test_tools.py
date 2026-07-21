@@ -196,6 +196,12 @@ class FilmoraProjectToolsTest(unittest.TestCase):
         )
         self.assertEqual(unlink_row["status"], "partial")
         self.assertIn("opaque", unlink_row["evidence"])
+        custom_ramp_row = next(
+            item for item in features
+            if item["area"] == "speed" and item["feature"] == "custom ramp editing"
+        )
+        self.assertEqual(custom_ramp_row["status"], "partial")
+        self.assertIn("keyframe shape", custom_ramp_row["evidence"])
 
     def test_feature_coverage_cli_filters_json_without_changing_totals(self) -> None:
         output = io.StringIO()

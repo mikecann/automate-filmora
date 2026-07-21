@@ -217,6 +217,17 @@ The Speed panel then confirmed the inverted `speedWithPitch` flag, linked
 reverse flags, animation mirroring during reverse, and six stock speed-ramp
 curves. Speed ramps replace uniform settings, write identical curves to linked
 audio and video, integrate a new duration, and retime existing visual animation.
+
+A follow-up Customize-card experiment moved one speed-ramp point from 1x to
+approximately 5x. The controlled pair `308-speed-ramp-baseline.wfp` ->
+`309-speed-ramp-custom-point.wfp` inserted a five-point `Interpolation: 9`
+curve under both linked clips' `speed.speedParam`, retimed the pair to
+33,333,333 ticks, and regenerated one shared MD5. A second independent drag
+(`310-speed-ramp-reset.wfp` -> `311-speed-ramp-custom-repeat.wfp`) reproduced
+the point times, values, interpolation, and MD5. Derivatives varied slightly
+with the exact mouse coordinate, so derivative and checksum generation remain
+opaque and no custom-ramp writer is authorized.
+
 A Basic Compositing opacity attempt on the sole base-track clip was a negative
 control: Filmora showed the UI but persisted no opacity change. Static opacity
 and blend-mode work now explicitly requires a true upper-track overlay fixture.

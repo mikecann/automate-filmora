@@ -294,6 +294,35 @@ an opaque MD5. The one-tick Flash In/Out duration difference is retained as an
 observation, not rounded away. Custom ramp editing, the Customize card, and AI
 frame-interpolation modes remain open. No speed writer is authorized.
 
+### Controlled custom speed-ramp point edit
+
+Filmora 15.6.4.11894 on macOS was tested with the five-second disposable clip.
+The Customize card was opened from the Speed Ramping panel, and one graph point
+was dragged from the 1x line to approximately 5x. The saved copies were
+`308-speed-ramp-baseline.wfp` -> `309-speed-ramp-custom-point.wfp`; a second
+selection and drag produced `310-speed-ramp-reset.wfp` ->
+`311-speed-ramp-custom-repeat.wfp`.
+
+The first edit replaced the two-point uniform curve with a five-point curve in
+the embedded `clip.speed.speedParam` JSON. The stable shape was:
+
+```json
+[
+  {"_time": 0.0, "_value": 1.0, "Interpolation": 9},
+  {"_time": 1.25, "_value": 1.0, "Interpolation": 9},
+  {"_time": 2.4817518, "_value": 5.0, "Interpolation": 9},
+  {"_time": 3.75, "_value": 1.0, "Interpolation": 9},
+  {"_time": 5.0, "_value": 1.0, "Interpolation": 9}
+]
+```
+
+Filmora wrote that same curve to the linked video and audio clips, changed
+`tlEnd`/`outPoint` from 50,000,000 to 33,333,333 ticks, and regenerated the
+opaque `MD5`. The repeat reproduced the point times, values, interpolation, and
+MD5 exactly; only the floating-point derivative fields varied slightly with
+the pixel drag. This maps the graph shape and retiming boundary, but not the
+derivative or checksum algorithms. Custom-ramp writing remains unsupported.
+
 ### Controlled Basic Color temperature change
 
 Repeating Color > Basic > Temperature from 10 to 20 changed only
