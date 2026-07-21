@@ -304,10 +304,10 @@ Red_brightnessVal
 Hue repeats across the other seven chips confirmed the remaining serialized
 prefixes: `Orange`, `Yellow`, `Green`, `Aqua`, `Blue`, `Purple`, and `Magenta`.
 In particular, Filmora's cyan-colored chip uses `Aqua_hueVal`, not `Cyan`.
-All values used `paramType: 3` and stored the UI number directly. The observed
-suffix pattern strongly suggests matching `_satVal` and `_brightnessVal`
-parameters for every prefix, but only the complete Red trio and every channel's
-Hue were changed in this batch.
+All values used `paramType: 3` and stored the UI number directly. A controlled
+Orange repeat from saturation `15` to `27` added no new structure and changed
+only `Orange_satVal`, confirming the same direct scalar rule outside the Red
+channel. Luminance and a guarded writer remain open.
 
 ### Controlled RGB Curves change
 
