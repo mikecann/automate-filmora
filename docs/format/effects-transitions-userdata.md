@@ -41,6 +41,22 @@ names and values. `replace_clip_equalizer` therefore replaces the complete
 existing list only when it exactly matches one of those two presets. It does
 not synthesize a missing node or infer custom equalizer curves.
 
+### Controlled audio Denoise fields
+
+On a disposable linked A/V clip, opening Audio > Denoise and enabling Normal
+Denoise added one boolean to the existing type `2` audio clip:
+
+```json
+{"enableV3Denoise": true, "denoiseV3Strength": 50.0}
+```
+
+The strength was already serialized at its default value while disabled. A
+repeat from `50.0` to `93.0` changed only `denoiseV3Strength`; Filmora Save As
+retained `93.0` and the output passed every format probe. This confirms the
+enable flag and the scalar's visible range shape for this build. It does not
+yet authorize a writer: disabling/removing the flag, AI Denoise, DeReverb,
+Hum/Hiss Removal, or any voice-enhancement control needs its own pair.
+
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 

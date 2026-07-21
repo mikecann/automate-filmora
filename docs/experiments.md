@@ -463,6 +463,16 @@ archives passed format evaluation, and the round-trip retained all ten `Pop`
 bands. Custom curves, first-use node insertion, and other presets remain
 unsupported.
 
+## Audio Denoise enable and strength probe
+
+On `266-track-layout-baseline.wfp`, opening Audio > Denoise and enabling Normal
+Denoise added only `enableV3Denoise: true` to the existing type-2 audio clip.
+The same clip already stored `denoiseV3Strength: 50.0`. A repeat from that
+normalized save to `93.0` changed only the strength field; the Filmora Save As
+copy `268-audio-denoise-normal-93.wfp` passed every format probe. This maps the
+local Normal Denoise flag and scalar, but not AI Denoise, DeReverb, Hum/Hiss
+Removal, ducking, normalization, voice effects, or the disable/removal path.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute

@@ -2942,6 +2942,32 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             self.assertIn("$.allMarkersInfo.{id}[].position", fields)
             self.assertFalse(any(opaque in field for field in fields))
 
+    def test_map_profiles_audio_denoise_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_denoise(timeline):
+                audio = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] in (2, 16)
+                )
+                audio["type"] = 2
+                audio["denoiseV3Strength"] = 93.0
+                audio["enableV3Denoise"] = True
+
+            project = _rewrite_main_timeline(source, root / "denoise.wfp", add_denoise)
+            result = map_project(project)
+            audio_type = next(
+                row for row in result["timeline"]["clip_types"] if row["type"] == "2"
+            )
+            self.assertEqual(
+                audio_type["field_presence"]["denoiseV3Strength"], 1
+            )
+            self.assertEqual(audio_type["field_presence"]["enableV3Denoise"], 1)
+
     def test_map_profiles_embedded_json_and_xml_without_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

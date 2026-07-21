@@ -67,7 +67,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("audio", "fade out", "writable", "edit-plan schema 8"),
     ("audio", "balance pan", "writable", "guarded Balance scalar; repeated UI normalization"),
     ("audio", "equalizer", "writable", "guarded existing Rock and Pop preset replacement; real-project round trip"),
-    ("audio", "denoise ducking normalization voice effects", "open", "UI and corpus inventory only"),
+    ("audio", "denoise ducking normalization voice effects", "partial", "Normal Denoise enable and strength repeated; other audio AI controls open"),
     ("video.analysis", "Motion Blur", "external_dependency", "toggle starts model update and processing"),
     ("video.analysis", "Stabilization", "open", "controlled save pending"),
     ("video.analysis", "Video Denoise and Lens Correction", "open", "UI inventoried only"),
