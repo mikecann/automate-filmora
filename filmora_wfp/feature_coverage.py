@@ -39,7 +39,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.compositing", "static opacity", "writable", "guarded existing-overlay pipBuf replacement; repeated UI diff"),
     ("video.compositing", "blend mode", "open", "overlay required"),
     ("video.background", "blur enable and strength preset", "writable", "guarded existing-field writer; Filmora sample round trip"),
-    ("video.background", "other fill types and styles", "open", "custom dropdown unresolved"),
+    ("video.background", "other fill types and styles", "partial", "Color enum 2 observed; payload and other types open"),
     ("video.animation", "Fade In and Fade Out presets", "mapped", "apply undo redo"),
     ("video.animation", "slide Pause Vortex and Zoom presets", "mapped", "independent matrix"),
     ("video.animation", "custom keyframes and interpolation", "partial", "MD5 generation open"),

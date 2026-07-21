@@ -493,8 +493,12 @@ Turning Background off again removed `backgroundFillEnable` but retained the
 chosen `backgroundFillBluredness: 40`, so absence of the enable field is the
 observed off state and the last configuration survives.
 
-Other Background types, Blur Style, custom blur strength, color/image payloads,
-and Apply to All remain open. Existing-field replacement is structurally
+Changing Background Type from Blur to Color on a normalized disposable copy
+added only `backgroundFillType: 2`, apart from the known opaque timeline token;
+both copies passed `eval-format`. The Color panel then exposes a separate color
+payload, which has not been changed yet. Other Background types, Blur Style,
+custom blur strength, color/image payloads, and Apply to All remain open.
+Existing-field replacement is structurally
 simple. The guarded `replace_clip_background_blur` writer now supports an
 existing clip's strength and enable state without synthesizing first-use
 holding chains; its generated copy passed format evaluation and the Filmora

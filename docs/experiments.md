@@ -147,6 +147,8 @@ and blend-mode work now explicitly requires a true upper-track overlay fixture.
 The neighboring Background section did persist on the base-track clip: enable
 is represented by presence of `backgroundFillEnable: true`, while the selected
 blur strength remains in `backgroundFillBluredness` even after disabling it.
+A normalized Blur-to-Color change then added only `backgroundFillType: 2`;
+Color payload and the other type enums remain open.
 Motion Blur was probed next but is not a local scalar-only control in this
 build. Its first enable started an AI-model update and clip-processing pass.
 Processing was stopped and the feature disabled; the resulting Save As had no
