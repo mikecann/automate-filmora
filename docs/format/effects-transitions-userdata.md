@@ -309,8 +309,9 @@ Orange repeat from saturation `15` to `27` added no new structure and changed
 only `Orange_satVal`, confirming the same direct scalar rule outside the Red
 channel. A second controlled Orange repeat from luminance `15` to `27` changed
 only `Orange_brightnessVal`, confirming the brightness/luminance suffix rule as
-well. These scalar observations are mapped, but no generic HSL writer is
-exposed yet.
+well. These scalar observations are mapped. The guarded `replace_clip_hsl`
+writer supports one existing static scalar at a time; it does not synthesize
+first-use fields or touch keyframes.
 
 ### Controlled RGB Curves change
 

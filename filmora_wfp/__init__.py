@@ -1,6 +1,6 @@
 """Evidence-driven tools for Wondershare Filmora project files."""
 
-__version__ = "0.13.6"
+__version__ = "0.13.7"
 
 from .analysis import inspect_project, list_titles, validate_project
 from .anchor import (
@@ -26,6 +26,7 @@ from .audio_fade_out import (
     replace_clip_fade_out,
 )
 from .audio_balance import audit_clip_audio_balance_copy, preflight_clip_audio_balance, replace_clip_audio_balance
+from .hsl import audit_clip_hsl_copy, preflight_clip_hsl, replace_clip_hsl
 from .audit import audit_title_card_copy
 from .corpus import discover_projects, survey_projects
 from .corner_radius import (
@@ -169,6 +170,7 @@ __all__ = [
     "audit_title_text_copy",
     "audit_clip_rotation_copy",
     "audit_clip_volume_gain_copy",
+    "audit_clip_hsl_copy",
     "audit_linked_transition_duration_copy",
     "audit_linked_transition_removal_copy",
     "edit_plan_schema",
@@ -207,6 +209,7 @@ __all__ = [
     "preflight_clip_horizontal_flip",
     "preflight_clip_vertical_flip",
     "preflight_clip_volume_gain",
+    "preflight_clip_hsl",
     "preflight_linked_transition",
     "preflight_title_text_replacement",
     "replace_title_text",
@@ -220,6 +223,7 @@ __all__ = [
     "replace_clip_horizontal_flip",
     "replace_clip_vertical_flip",
     "replace_clip_volume_gain",
+    "replace_clip_hsl",
     "replace_linked_transition_duration",
     "remove_linked_transition",
     "survey_projects",

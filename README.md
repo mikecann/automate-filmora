@@ -91,6 +91,10 @@ keyframed opacity, stale values, and first-use insertion.
 the verified Filmora conversion between the -100..100 UI range and its stored
 0..1 scalar.
 
+`replace_clip_hsl` edits one existing static `AdjustColor` HSL scalar such as
+`Orange_satVal` or `Red_hueVal`. It refuses first-use insertion, keyframed
+parameters, missing fields, and stale values.
+
 Repeat the same audit explicitly with:
 
 ```bash

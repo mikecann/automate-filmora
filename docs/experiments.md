@@ -114,7 +114,8 @@ scalars, and one repeated luma Curves midpoint. Curves serialize the visible
 knot plus two derived Bezier-control arrays, so they remain read-only until the
 handle derivation is proven. Controlled Orange repeats then confirmed direct
 `Orange_satVal` and `Orange_brightnessVal` scalars for non-Red saturation and
-luminance. HSL section toggles and a generic HSL writer remain open.
+luminance. HSL section toggles and keyframed HSL remain open; the guarded
+`replace_clip_hsl` writer now covers one existing static scalar at a time.
 A Hue-vs-Sat midpoint repeat then isolated the separate CurveColor payload. Its
 array declares all six Hue/Saturation curve modes; only the selected mode's
 JSON string changed. Other mode-specific point/control derivations remain open.

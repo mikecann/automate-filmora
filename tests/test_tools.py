@@ -53,6 +53,7 @@ from filmora_wfp import (
     preflight_clip_position,
     preflight_clip_opacity,
     preflight_clip_audio_balance,
+    preflight_clip_hsl,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -68,6 +69,7 @@ from filmora_wfp import (
     replace_clip_horizontal_flip,
     replace_clip_vertical_flip,
     replace_clip_volume_gain,
+    replace_clip_hsl,
     replace_linked_transition_duration,
     replace_title_text,
     remove_linked_transition,
@@ -1516,6 +1518,58 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 source, clip_uid="audio-clip", old_balance=25, new_balance=-50
             )
             self.assertEqual(result["new_stored_balance"], "0.25")
+
+    def test_existing_hsl_scalar_is_copy_only_and_audited(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_cloneable_title_project(root / "base.wfp")
+
+            def add_hsl(timeline):
+                timeline["timelineInfos"][0]["trackInfos"][1]["clipList"].append({
+                    "type": 1,
+                    "thisUId": "hsl-video",
+                    "tlBegin": 40_000_000,
+                    "tlEnd": 60_000_000,
+                    "effectChainList": [{"effectList": [{
+                        "id": "662E16ED-4524-4D13-AAE9-11DBA0C63E17",
+                        "display": "AdjustColor",
+                        "paramList": [{
+                            "name": "Orange_satVal",
+                            "fxParam": {"paramType": 3, "unValue": 15.0},
+                        }],
+                    }]}],
+                })
+
+            source = _rewrite_main_timeline(base, root / "source.wfp", add_hsl)
+            output = root / "output.wfp"
+            preflight = preflight_clip_hsl(
+                source,
+                clip_uid="hsl-video",
+                parameter_name="Orange_satVal",
+                old_value=15,
+                new_value=27,
+            )
+            self.assertEqual(preflight["matching_archive_occurrences"], 1)
+            result = replace_clip_hsl(
+                source,
+                output,
+                clip_uid="hsl-video",
+                parameter_name="Orange_satVal",
+                old_value=15,
+                new_value=27,
+                expected_source_sha256=project_sha256(source),
+            )
+            self.assertTrue(result["audit"]["valid"])
+            self.assertEqual(len(diff_projects(source, output)["json_changes"]), 1)
+            self.assertTrue(source.exists())
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                preflight_clip_hsl(
+                    output,
+                    clip_uid="hsl-video",
+                    parameter_name="Orange_satVal",
+                    old_value=15,
+                    new_value=30,
+                )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
