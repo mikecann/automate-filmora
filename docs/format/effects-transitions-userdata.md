@@ -57,6 +57,25 @@ enable flag and the scalar's visible range shape for this build. It does not
 yet authorize a writer: disabling/removing the flag, AI Denoise, DeReverb,
 Hum/Hiss Removal, or any voice-enhancement control needs its own pair.
 
+### Controlled Auto Normalization fields
+
+On the same normalized audio clip, enabling Auto Normalization with the
+`-23 LUFS` preset added two parameters to the existing
+`audio/effect/volume` node:
+
+```json
+[
+  {"name": "LoudnessGainEnable", "fxParam": {"paramType": 1, "unValue": true}},
+  {"name": "LoudnessGain", "fxParam": {"paramType": 3, "unValue": 0.6138902306556702}}
+]
+```
+
+Repeating the preset from `-23 LUFS` to `-16 LUFS` changed only
+`LoudnessGain` to `1.3743289709091187` apart from Filmora's opaque clip
+metadata. The preset values are therefore mapped for inspection, but the
+first-use userData rewrite and the `Custom` mode are not stable enough for a
+generic writer.
+
 Effect instance IDs are separate from clip IDs. A split duplicated the default
 effect chains onto the new halves and allocated fresh effect instance IDs.
 

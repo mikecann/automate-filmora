@@ -473,6 +473,12 @@ copy `268-audio-denoise-normal-93.wfp` passed every format probe. This maps the
 local Normal Denoise flag and scalar, but not AI Denoise, DeReverb, Hum/Hiss
 Removal, ducking, normalization, voice effects, or the disable/removal path.
 
+Auto Normalization on the normalized follow-up then added `LoudnessGainEnable`
+and `LoudnessGain` parameters to the existing `audio/effect/volume` node.
+Selecting `-23 LUFS` stored `0.6138902306556702`; repeating it at `-16 LUFS`
+stored `1.3743289709091187` in isolation. The preset mapping is read-safe, but
+the first-use userData rewrite and Custom mode remain writer gaps.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute

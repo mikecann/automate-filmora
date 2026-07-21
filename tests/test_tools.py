@@ -2957,6 +2957,27 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 audio["type"] = 2
                 audio["denoiseV3Strength"] = 93.0
                 audio["enableV3Denoise"] = True
+                audio["effectChainList"] = [
+                    {
+                        "name": "Effect",
+                        "effectList": [
+                            {
+                                "id": "audio/effect/volume",
+                                "display": "volume",
+                                "paramList": [
+                                    {
+                                        "name": "LoudnessGainEnable",
+                                        "fxParam": {"paramType": 1, "unValue": True},
+                                    },
+                                    {
+                                        "name": "LoudnessGain",
+                                        "fxParam": {"paramType": 3, "unValue": 1.3743289709091187},
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ]
 
             project = _rewrite_main_timeline(source, root / "denoise.wfp", add_denoise)
             result = map_project(project)
@@ -2967,6 +2988,11 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                 audio_type["field_presence"]["denoiseV3Strength"], 1
             )
             self.assertEqual(audio_type["field_presence"]["enableV3Denoise"], 1)
+            volume = next(
+                effect for effect in result["effects"] if effect["id"] == "audio/effect/volume"
+            )
+            parameter_names = {item["name"] for item in volume["parameters"]}
+            self.assertEqual(parameter_names, {"LoudnessGain", "LoudnessGainEnable"})
 
     def test_map_profiles_embedded_json_and_xml_without_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
