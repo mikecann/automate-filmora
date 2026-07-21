@@ -453,6 +453,18 @@ archives passed format evaluation, and the round-trip retained all ten `Pop`
 bands. Custom curves, first-use node insertion, and other presets remain
 unsupported.
 
+## Track-control persistence probe
+
+On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute
+control changed the accessibility state from `Value: 1` to `Value: 0`. The
+Filmora Save As copy `258-track-video-muted.wfp` reopened and passed format
+validation, but its semantic diff contained no track mute field change. The
+observed timeline still had the same track `userData` and clip payloads.
+Therefore track mute/solo/lock/visibility remains partial: the controls are
+discoverable, but this fixture did not reveal a durable project serialization
+for them. It would be wrong to write these fields until a real media project
+produces a repeatable before/after diff.
+
 ## Existing audio clip fade-in acceptance
 
 On the same disposable five-second clip, the first Basic Audio fade-in change
