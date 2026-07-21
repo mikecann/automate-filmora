@@ -22,6 +22,19 @@ save with the visible mode still Normal normalized `pipBuf.BlendMode` from
 integer `0` to string `"Normal"`. Since no non-Normal option was selected, this
 does not authorize a Blend Mode writer.
 
+### 2026-07-21: Track visibility toggle
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: toggled Video 1 > Hide Track from on to off, then saved as.
+- Before/after: `215-track-visibility-baseline.wfp` → `216-track-visibility-hidden.wfp`
+- Evidence: no track object fields changed. The only semantic timeline change was an opaque `timelineInfos[0].userData[5].data` blob, alongside normal save metadata.
+- Boundary: track visibility, lock, mute, and solo remain unresolved until their opaque userData keys are isolated with repeated independent toggles.
+
+A repeat Video 1 > Mute toggle (`217-track-mute-baseline.wfp` →
+`218-track-mute-enabled.wfp`) changed the same opaque timeline userData slot and
+no track object field. This confirms the current track-control boundary rather
+than identifying a writable key.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol
