@@ -368,7 +368,7 @@ def validate_project(path: Pathish, check_media: bool = False) -> Dict[str, Any]
                     if isinstance(filename, str) and filename and not _path_from_file_uri(filename).exists():
                         missing_media.append(str(_display_path(filename, False)))
                 if missing_media:
-                    warnings.append("Missing external media: {0}".format(", ".join(sorted(set(missing_media)))))
+                    errors.append("Missing external media: {0}".format(", ".join(sorted(set(missing_media)))))
 
             details = {
                 "project_info_member": PROJECT_INFO_MEMBER,
@@ -377,6 +377,8 @@ def validate_project(path: Pathish, check_media: bool = False) -> Dict[str, Any]
                 "timeline_ids": sorted(ids, key=str),
                 "title_count": len(list_titles(path)),
                 "checked_external_media": check_media,
+                "external_media_valid": not missing_media if check_media else None,
+                "missing_external_media_count": len(set(missing_media)),
             }
     except WfpError as exc:
         errors.append(str(exc))

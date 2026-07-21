@@ -34,6 +34,11 @@ python3 -m filmora_wfp titles "/path/to/project.wfp"
 python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
 python3 -m filmora_wfp edit-targets "/path/to/project.wfp"
 python3 -m filmora_wfp explain-plan project.wfp work/edit-plan.json
+python3 -m filmora_wfp rough-cut-plan recording.mp4 work/recording-rough-cut
+python3 -m filmora_wfp rough-cut-seed work/recording-seed.wfp
+python3 -m filmora_wfp rough-cut-project work/recording-seed.wfp \
+  work/recording-rough-cut/rough-cut-plan.json \
+  work/recording-rough-cut/recording-automated-rough-cut.wfp
 ```
 
 `map` is the broad reverse-engineering command. It inventories normalized JSON
@@ -54,6 +59,10 @@ explicitly supplied, and an existing output file is never overwritten.
 Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, `diff`, or
 any edit-plan command for machine-readable output. Paths are reduced to
 basenames unless `--reveal-paths` is supplied.
+
+Pass `--check-media` to `validate` when the project must open on the current
+machine. A missing external source makes that explicit media validation fail,
+even when the WFP archive itself is structurally sound.
 
 `unpack` safely extracts a project to a new directory without touching the source:
 
@@ -123,6 +132,32 @@ Plans require the exact source SHA-256, resolve selectors from the latest source
 and expose the Filmora round-trip as an explicit incomplete verification step.
 See [`docs/edit-plan-api.md`](docs/edit-plan-api.md).
 
+The headless rough-cut planner combines ffmpeg silence detection with
+independent per-audible-range faster-whisper transcription and conservative
+repeated-take detection. Resetting Whisper at each silence cut prevents it from
+joining a short false start to a later completed take. It writes a transcript,
+a review report, and source-time keep ranges under a new output directory:
+
+```bash
+python3 -m filmora_wfp rough-cut-plan recording.mp4 work/recording-rough-cut \
+  --ffmpeg /path/to/ffmpeg \
+  --model small.en
+```
+
+Reuse a previous SRT or planner transcript with `--transcript`. Compare a plan
+with a manually edited reference project using `rough-cut-eval`, and check a
+clean one-pair Filmora seed project using `rough-cut-seed`. The guarded
+`rough-cut-project` writer turns reviewed keep ranges into a new, gapless linked
+A/V timeline, updates the two proven duration fields, and runs a source-aware
+audit. Keep the seed hash guard on and round-trip the generated copy through the
+same Filmora build before production editing. See
+[`docs/rough-cut.md`](docs/rough-cut.md).
+
+By default, an audible island must overlap a transcript word to survive. That
+removes mouse, keyboard, handling, and room noises that cross the volume
+threshold. Use `--keep-untranscribed-audio` to retain those islands for manual
+review when Whisper may miss quiet speech.
+
 ## Repository map
 
 - `filmora_wfp/`: dependency-free inspection, validation, diff, unpack, and narrow copy tools.
@@ -187,6 +222,15 @@ The tools can currently:
   separate unsupported operation.
 - replace one already-present Anchor Point X/Y pair from Filmora pixel values
   through the same resolution-aware conversion used by Position.
+- transcribe a recording with optional faster-whisper word timestamps, detect
+  silence with ffmpeg, remove exact and reworded earlier attempts including
+  grouped false-start fragments, flag unmatched short clips for review, and
+  write an auditable source-time rough-cut plan;
+- compare rough-cut keep ranges with a manually edited WFP and validate the
+  read-only shape of a single-pair seed project;
+- generate a new single-source Filmora rough cut from reviewed keep ranges,
+  assigning unique linked-pair and instance IDs, packing clips without timeline
+  gaps, updating project/media durations, and auditing the copy against its seed.
 
 These narrow writers deliberately do not form a generic WFP writer. A generated copy
 must still be opened and saved in the exact Filmora build that created its template
@@ -195,6 +239,10 @@ before it should be trusted for production editing.
 Published schemas 1 through 9 remain immutable. Schema version 10 adds existing
 uniform-scale replacement. Schema version 9 added video-clip position
 replacement without changing the earlier contracts.
+
+The rough-cut writer is deliberately limited to one Filmora-created linked A/V
+seed pair with forward 1x media and the observed link-ID shape. A headless audit
+does not replace the exact-build Filmora open, Save As, and reopen check.
 
 ## Related work
 

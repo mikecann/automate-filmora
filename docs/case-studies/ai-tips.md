@@ -111,3 +111,140 @@ same amount.
 - Whether every generated card's complete animation renders identically before
   and after the save; the load test verified visible added-card thumbnails but did
   not play every animation end to end.
+
+## Headless rough-cut benchmark, 2026-07-20
+
+The original `1838.533` second camera recording and the `113` linked-pair
+`AI Tips - completed intros.wfp` edit provide source-time ground truth for a
+rough-cut planner. The reference camera clips retain `952.067` seconds. The main
+timeline spans `988.267` seconds because it also contains gaps and compound
+intro placements.
+
+The first planner benchmark used:
+
+- cached faster-whisper `small.en` with word timestamps and VAD;
+- ffmpeg silence threshold `-35 dB`;
+- minimum silence `0.5` seconds;
+- softening buffer `0.4` seconds;
+- exact five-word repeated sequences within a 90-second window;
+- the earlier repeated occurrence as the proposed abandoned take.
+
+After fixing whole-segment text being incorrectly copied into every overlapping
+audible region, the source-time evaluation reported:
+
+- predicted keep duration: `1183.350` seconds;
+- manual keep duration: `952.067` seconds;
+- keep precision: `80.16%`;
+- keep recall: `99.63%`;
+- keep intersection-over-union: `79.92%`;
+- proposed repeated-take removal: `168.109` seconds;
+- proposed repeated-take removal overlapping a manual keep: `0.000` seconds.
+
+This is encouraging high-precision evidence on one recording, not proof that
+five-word repetition generalizes to other presenters. The plan still keeps
+about `231.3` seconds more than the manual edit, so semantic bad-take recall
+needs more work. The evaluation compares unordered unions of source ranges; it
+does not score the one source-order reversal, title-card gaps, final pacing, or
+rendered output.
+
+## Generated rough-cut project, 2026-07-20
+
+A Filmora 15.7.3.12221 seed containing the untouched camera recording as one
+linked pair passed the new guarded seed check. The writer rounded every keep
+start down and keep end up to the nearest 30 fps boundary, merging ranges that
+touched after rounding. It converted the `203` source-time keep ranges into
+`198` linked pairs and a gapless `1189.900` second timeline.
+
+The generated disposable `.wfp` passed its source-aware audit, media resolution,
+and every format probe. The main timeline contains `198` visual plus `198` audio
+clips and `1,782` unique instance IDs. No real project or recording was changed.
+
+Filmora's Open dialog displayed the generated file, but the Mac locked before
+the final Open action. The pending exact-build Save As and reopen check is still
+required before using this generated copy as production evidence.
+
+The first generated project retained `55` short audible regions with no word
+timestamps, including six mouse or handling-noise clips before the first spoken
+word. Requiring transcript-word overlap removed `63.489` seconds of these noise
+islands. The revised plan retained `1119.861` source seconds and improved its
+manual-reference precision from `80.16%` to `84.67%`, while recall remained
+`99.59%`. After outward frame quantization, the revised Filmora project contains
+`143` linked pairs and spans `1124.667` seconds.
+
+The first interpretation of listening feedback around "the cost of
+implementing" incorrectly reversed the policy and preferred the earlier smooth
+take over a fragmented later take. The presenter clarified that the last take is
+normally intentional and that the target was the false-start fragments. That
+`v5` artifact is superseded.
+
+The planner keeps the last repeated take. Its additional grouping is limited to
+earlier attempts where two or more repeat spans progress through separate
+audible islands in both versions. It removes the earlier islands between that
+evidence, including non-matching stumble words that the per-region detector
+would otherwise retain. This preserves the established last-take convention
+while improving cleanup of fragmented false starts.
+
+Further Filmora listening review showed the first generated clip was the prefix
+"It's such an exciting", followed by a later clip that repeated and completed
+the opening. The whole-recording Whisper transcript had incorrectly assigned
+only "time to be a developer" to the later clip, hiding the repeated opening.
+The same timestamp smearing hid two separate "the cost of implementing" false
+starts at source `181.107-183.558` and `183.861-186.077` seconds before the
+complete take at `186.960-193.639` seconds.
+
+Whisper now receives all silence-cut ranges through `clip_timestamps` with
+`condition_on_previous_text` disabled. The returned words retain absolute source
+times, but each range gets independent language context. On the same recording
+this exposed and removed the opening prefix plus both incomplete cost starts.
+An explicit `0.60` no-speech probability filter also rejected eight short noise
+hallucinations, including several bogus "Thanks for watching" segments. The
+resulting `v9` project contains `140` linked pairs and spans `1125.433` seconds;
+its source-aware audit and external-media validation passed.
+
+Listening review at about timeline `05:31` exposed a second false-start shape.
+The presenter made one partial "Oh and one last quick tip" attempt, five tiny
+restart clips, another substantial failed attempt ending in frustration, and
+then the complete take. Exact repeated-word matching already removed the two
+substantial attempts but left the five fragments at source `581.802-591.346`
+seconds.
+
+The planner now recognizes a narrowly guarded chain: an earlier attempt repeats
+in a later attempt, and that later attempt independently repeats in the final
+take. When at least two intervening audible regions are each no longer than
+three seconds, those trapped restart fragments are grouped with the failed
+attempts. On this recording the change affected only those five regions out of
+`231`; the complete take at source `612.883-624.918` remained. The generated
+`v10` project contains `135` linked pairs and spans `1117.600` seconds. Its
+archive, references, source-aware writer audit, and external media all passed
+headless validation. Filmora listening remains the final quality gate.
+
+Further review showed that duration alone is a poor bad-take classifier. Of the
+`33` retained regions shorter than five seconds in `v10`, many were necessary
+complete sentences or grammatical continuations. The planner now treats this
+duration as a review signal while ordered token coverage detects reworded takes,
+incomplete attempts, and short fragments trapped before the final take. It also
+splits a repeated restart at source `1199.150` that silence detection had left
+inside one audible region.
+
+Claude Fable independently reviewed the transcript-only `v11` plan. It judged
+`14` of the `18` short candidates as keeps, two as drops, and two as uncertain,
+confirming that deleting every sub-five-second clip would be destructive. It
+also identified three longer repeated takes missed by the duration signal. A
+follow-up ordered-token scan found one additional ten-second earlier take. All
+four longer candidates and the two definite short drops were absent from the
+manual Filmora reference.
+
+The resulting `v12` plan retains `993.980` source seconds. Against the manual
+reference it has `95.39%` keep precision, `99.59%` recall, and `95.03%`
+intersection-over-union. Its `290.794` seconds of proposed duplicate removals
+have zero overlap with manual keeps. The generated project contains `111`
+linked pairs and spans `997.600` seconds after frame quantization. Its writer
+audit, archive validation, and external-media check passed. These measurements
+are useful evidence for this recording, but neither the manual reference nor a
+transcript-only model replaces listening in Filmora.
+
+On 2026-07-21 Filmora initially reported the source recording as missing because
+its parent directory had been renamed after `v12` was generated. The user
+manually relinked the same recording and briefly scanned the resulting timeline,
+reporting that `v12` looked good. This is direct open and semantic spot-check
+evidence, but it is not a recorded full playthrough or Save As and reopen test.

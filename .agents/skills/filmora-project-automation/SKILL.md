@@ -1,6 +1,6 @@
 ---
 name: filmora-project-automation
-description: Inspect, diff, document, and safely automate Wondershare Filmora `.wfp` and `.wfpbundle` project files. Use when Codex needs to understand Filmora timelines, media references, compound clips, titles, effects, transitions, controlled before/after saves, project corruption, or a narrowly scoped project-file mutation.
+description: Inspect, diff, document, and safely automate Wondershare Filmora `.wfp` and `.wfpbundle` project files. Use when Codex needs to understand Filmora timelines, media references, compound clips, titles, effects, transitions, controlled before/after saves, project corruption, silence removal, transcription-assisted rough cuts, repeated takes, false starts, or a narrowly scoped project-file mutation.
 ---
 
 # Filmora Project Automation
@@ -30,6 +30,19 @@ actual project and Filmora build before asserting field semantics.
   collisions, plus a shortening end trim for a transition-free forward 1x
   linked pair, its complementary start trim, and a guarded split of the same
   supported linked-pair shape. There is no generic writer.
+
+## Select the workflow
+
+- For silence removal, transcription, handling-noise removal, false starts,
+  repeated takes, short suspicious clips, rough-cut evaluation, or generating a
+  Filmora project from a long recording, read
+  [references/rough-cut-and-bad-takes.md](references/rough-cut-and-bad-takes.md)
+  completely before acting.
+- For general timeline, clip, title, effect, or transition tracing, read
+  [references/format-map.md](references/format-map.md).
+- For a new format claim or writer operation, read
+  [references/experiment-protocol.md](references/experiment-protocol.md) and run
+  a controlled Filmora before/after experiment first.
 
 ## Inspect a project
 

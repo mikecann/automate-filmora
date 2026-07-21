@@ -133,6 +133,165 @@ def _encoded(value: str) -> str:
     return base64.b64encode(value.encode("ascii")).decode("ascii")
 
 
+def write_rough_cut_seed(path: Path, *, duration_ticks: int = 50_000_000) -> Path:
+    """Write the narrow Filmora-created shape accepted by the rough-cut writer."""
+
+    link_id = "AA-BB-CC-DD-EE-FF-4A-BB-8C-DD-EE-FF-AA-BB-CC-DD"
+    speed_param = json.dumps(
+        {
+            "Version": 3,
+            "ParameterType": 0,
+            "keyframeSets": [
+                {"_time": 0.0, "Interpolation": 6, "_value": 1.0},
+                {
+                    "_time": duration_ticks / 10_000_000,
+                    "Interpolation": 6,
+                    "_value": 1.0,
+                },
+            ],
+            "_totalTime": duration_ticks / 10_000_000,
+        },
+        separators=(",", ":"),
+    )
+    common = {
+        "filename": "file:///private/example/camera.mp4",
+        "sourceUuid": "source-camera",
+        "tlBegin": 0,
+        "tlEnd": duration_ticks,
+        "inPoint": 0,
+        "outPoint": duration_ticks,
+    }
+    audio = {
+        **common,
+        "type": 2,
+        "streamId": 1,
+        "thisUId": "10000000-0000-4000-8000-000000000001",
+        "speed": {
+            "offset": 0.0,
+            "offsetEnd": duration_ticks / 10_000_000,
+            "reverse": False,
+            "speedParam": speed_param,
+        },
+        "effectChainList": [
+            {
+                "effectList": [
+                    {
+                        "id": "audio/effect/clip_volume",
+                        "thisUId": "10000000-0000-4000-8000-000000000002",
+                    }
+                ]
+            }
+        ],
+        "userData": [{"key": 3, "size": 47, "data": _encoded(link_id)}],
+    }
+    video = {
+        **common,
+        "type": 1,
+        "streamId": 0,
+        "thisUId": "20000000-0000-4000-8000-000000000001",
+        "speed": {
+            "offset": 0.0,
+            # Filmora 15.7.3 may store the visual end with only millisecond
+            # precision, even while its ticks and linked audio remain exact.
+            "offsetEnd": duration_ticks / 10_000_000 - 0.0004,
+            "reverse": False,
+            "speedParam": speed_param,
+        },
+        "effectChainList": [
+            {
+                "effectList": [
+                    {
+                        "id": "video/effect/transform",
+                        "thisUId": "20000000-0000-4000-8000-000000000002",
+                    }
+                ]
+            }
+        ],
+        "userData": [
+            {
+                "key": 3,
+                "size": 64,
+                "data": base64.b64encode(
+                    link_id.encode("ascii") + b"\0" * (64 - len(link_id))
+                ).decode("ascii"),
+            }
+        ],
+    }
+    project_info = {
+        "project_file_name": "rough-cut-seed",
+        "project_editor_create_version": "15.7.3.12221",
+        "project_editor_modify_version": "15.7.3.12221",
+        "project_os_name": "MacOS",
+        "project_timeline_duration": duration_ticks,
+        "project_current_position": 0,
+        "project_timeline_framerate": [30, 1],
+        "project_timeline_resolution": [3840, 2160],
+        "timeline_mediaId": "MAIN",
+        "project_date_modify": 123456789,
+        "project_source": "opaque-source-token",
+        "project_guid": "opaque-project-guid",
+        "proj_zip_save_path": str(path),
+    }
+    timeline = {
+        "currentTimelineId": 5,
+        "projectName": "rough-cut-seed",
+        "projectVersion": "fixture",
+        "serializationVersion": "fixture",
+        "resources": [
+            {
+                "sourceUuid": "source-camera",
+                "filename": "file:///private/example/camera.mp4",
+                "mediaLength": duration_ticks,
+                "streamType": 2,
+                "videoStreamCount": 1,
+                "audioStreamCount": 1,
+            }
+        ],
+        "timelineInfos": [
+            {
+                "timelineId": 5,
+                "trackInfos": [
+                    {"trackType": 2, "trackTag": 1, "uuid": "empty", "clipList": []},
+                    {"trackType": 2, "trackTag": 2, "uuid": "audio", "clipList": [audio]},
+                    {"trackType": 1, "trackTag": 3, "uuid": "video", "clipList": [video]},
+                ],
+            }
+        ],
+    }
+    medias_info = {
+        "media_structure": {
+            "Folder": {"media_item": "SOURCE"},
+            "media_item": "MAIN",
+        },
+        "media_items": {
+            "SOURCE": {
+                "id": "SOURCE",
+                "name": "camera",
+                "download_url": "/private/example/camera.mp4",
+                "media_type": 8,
+                "media_length": duration_ticks,
+            },
+            "MAIN": {
+                "id": "MAIN",
+                "name": "rough-cut-seed",
+                "timeline_uuid": "AA-AA-AA-AA-AA-AA-4A-AA-8A-AA-AA-AA-AA-AA-AA-AA",
+                "media_type": 1048576,
+                "duration": duration_ticks,
+            },
+        },
+    }
+    members = {
+        "ProjectFolder/project_info.json": project_info,
+        "ProjectFolder/Medias/medias_info.json": medias_info,
+        "ProjectFolder/Medias/MAIN/timeline.wesproj": timeline,
+        "ProjectFolder/Medias/MAIN/extra.json": {"unchanged": True},
+    }
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for member, value in members.items():
+            archive.writestr(member, json.dumps(value, separators=(",", ":")))
+    return path
+
+
 def _cloneable_title_clip(text: str, uid: str, y: float) -> Dict[str, Any]:
     script = json.loads(title_script(text))
     script["TextData"][0]["CharData"] = text

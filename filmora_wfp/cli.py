@@ -22,6 +22,17 @@ from .edit_plan import (
 from .evals import evaluate_project
 from .feature_coverage import feature_coverage
 from .mapping import map_project
+from .rough_cut import (
+    build_rough_cut_plan,
+    detect_silence,
+    evaluate_rough_cut_plan,
+    inspect_rough_cut_seed,
+    load_transcript,
+    speech_regions_from_silences,
+    transcribe_media_ranges,
+    write_rough_cut_outputs,
+)
+from .rough_cut_wfp import write_rough_cut_project
 from .title_cards import clone_title_cards, load_title_card_spec
 
 
@@ -559,6 +570,65 @@ def build_parser() -> argparse.ArgumentParser:
     apply_plan_parser.add_argument("plan")
     apply_plan_parser.add_argument("--json", action="store_true")
 
+    rough_cut_parser = subparsers.add_parser(
+        "rough-cut-plan",
+        help="Transcribe media and write a reviewable silence/duplicate-take cut plan",
+    )
+    rough_cut_parser.add_argument("media")
+    rough_cut_parser.add_argument("output_directory")
+    rough_cut_parser.add_argument(
+        "--transcript",
+        help="Reuse an existing SRT or rough-cut transcript JSON instead of transcribing",
+    )
+    rough_cut_parser.add_argument("--model", default="small.en")
+    rough_cut_parser.add_argument("--device", default="cpu")
+    rough_cut_parser.add_argument("--compute-type", default="int8")
+    rough_cut_parser.add_argument("--ffmpeg", default="ffmpeg")
+    rough_cut_parser.add_argument("--threshold-db", type=float, default=-35.0)
+    rough_cut_parser.add_argument("--minimum-silence", type=float, default=0.5)
+    rough_cut_parser.add_argument("--softening-buffer", type=float, default=0.4)
+    rough_cut_parser.add_argument("--duplicate-window", type=float, default=90.0)
+    rough_cut_parser.add_argument("--auto-drop-confidence", type=float, default=0.90)
+    rough_cut_parser.add_argument("--minimum-duplicate-words", type=int, default=5)
+    rough_cut_parser.add_argument(
+        "--short-clip-suspicion",
+        type=float,
+        default=5.0,
+        help="Mark retained clips shorter than this many seconds for review (0 disables)",
+    )
+    rough_cut_parser.add_argument(
+        "--keep-untranscribed-audio",
+        action="store_true",
+        help="Keep audible regions with no transcript-word overlap for manual review",
+    )
+    rough_cut_parser.add_argument("--json", action="store_true")
+
+    rough_cut_eval_parser = subparsers.add_parser(
+        "rough-cut-eval",
+        help="Compare a rough-cut plan with linked source ranges in a manual WFP edit",
+    )
+    rough_cut_eval_parser.add_argument("plan")
+    rough_cut_eval_parser.add_argument("reference_project")
+    rough_cut_eval_parser.add_argument("--source-uuid")
+    rough_cut_eval_parser.add_argument("--json", action="store_true")
+
+    rough_cut_seed_parser = subparsers.add_parser(
+        "rough-cut-seed",
+        help="Read-only check for the single linked-pair WFP seed shape",
+    )
+    rough_cut_seed_parser.add_argument("project")
+    rough_cut_seed_parser.add_argument("--json", action="store_true")
+
+    rough_cut_project_parser = subparsers.add_parser(
+        "rough-cut-project",
+        help="Create a new Filmora WFP rough cut from a seed and reviewed plan",
+    )
+    rough_cut_project_parser.add_argument("seed")
+    rough_cut_project_parser.add_argument("plan")
+    rough_cut_project_parser.add_argument("output")
+    rough_cut_project_parser.add_argument("--expect-sha256")
+    rough_cut_project_parser.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -652,6 +722,122 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.command == "apply-plan":
             result = apply_edit_plan(args.project, args.output, args.plan)
             _dump_json(result) if args.json else _print_plan_application(result)
+            return 0
+        if args.command == "rough-cut-plan":
+            print("Detecting silence...", file=sys.stderr)
+            duration, silences = detect_silence(
+                args.media,
+                ffmpeg=args.ffmpeg,
+                threshold_db=args.threshold_db,
+                minimum_duration=args.minimum_silence,
+            )
+            if args.transcript:
+                print("Loading transcript...", file=sys.stderr)
+                transcript = load_transcript(args.transcript)
+                transcription_mode = "provided_transcript"
+            else:
+                print("Transcribing silence-cut regions...", file=sys.stderr)
+                transcript = transcribe_media_ranges(
+                    args.media,
+                    speech_regions_from_silences(
+                        duration,
+                        silences,
+                        softening_buffer=args.softening_buffer,
+                    ),
+                    model_name=args.model,
+                    device=args.device,
+                    compute_type=args.compute_type,
+                )
+                transcription_mode = "independent_silence_regions"
+            media_path = Path(args.media).expanduser().resolve()
+            plan = build_rough_cut_plan(
+                source_name=media_path.name,
+                duration_seconds=duration,
+                silences=silences,
+                transcript=transcript,
+                softening_buffer=args.softening_buffer,
+                threshold_db=args.threshold_db,
+                minimum_silence=args.minimum_silence,
+                duplicate_window=args.duplicate_window,
+                auto_drop_confidence=args.auto_drop_confidence,
+                minimum_duplicate_words=args.minimum_duplicate_words,
+                short_clip_suspicion_seconds=args.short_clip_suspicion,
+                drop_untranscribed_audio=not args.keep_untranscribed_audio,
+            )
+            plan["settings"]["transcription_mode"] = transcription_mode
+            outputs = write_rough_cut_outputs(
+                args.output_directory,
+                plan=plan,
+                transcript=transcript,
+            )
+            summary = {
+                "outputs": outputs,
+                "regions": len(plan.get("regions") or []),
+                "duplicate_drops": len(plan.get("duplicate_drop_ranges") or []),
+                "non_speech_drops": len(plan.get("non_speech_drop_ranges") or []),
+                "review_regions": sum(
+                    item.get("decision") == "review"
+                    for item in plan.get("regions") or []
+                ),
+                "filmora_handoff": plan.get("filmora_handoff"),
+            }
+            if args.json:
+                _dump_json(summary)
+            else:
+                print(outputs["plan"])
+                print("Speech regions: {0}".format(summary["regions"]))
+                print("High-confidence duplicate drops: {0}".format(summary["duplicate_drops"]))
+                print("Untranscribed audio drops: {0}".format(summary["non_speech_drops"]))
+                print("Review regions: {0}".format(summary["review_regions"]))
+                print("Filmora writer: available after rough-cut-seed check")
+            return 0
+        if args.command == "rough-cut-eval":
+            result = evaluate_rough_cut_plan(
+                args.plan,
+                args.reference_project,
+                source_uuid=args.source_uuid,
+            )
+            if args.json:
+                _dump_json(result)
+            else:
+                print("Keep precision: {0:.1%}".format(result["keep_precision"]))
+                print("Keep recall: {0:.1%}".format(result["keep_recall"]))
+                print("Keep IoU: {0:.1%}".format(result["keep_iou"]))
+                print(
+                    "Duplicate drops: {0:.3f}s correct, {1:.3f}s overlapping manual keeps".format(
+                        result["duplicate_correct_drop_seconds"],
+                        result["duplicate_false_drop_seconds"],
+                    )
+                )
+            return 0
+        if args.command == "rough-cut-seed":
+            result = inspect_rough_cut_seed(args.project)
+            if args.json:
+                _dump_json(result)
+            else:
+                print("VALID SEED SHAPE" if result["valid_seed_shape"] else "INVALID SEED SHAPE")
+                for issue in result.get("issues") or []:
+                    print("ERROR: {0}".format(issue))
+                print(
+                    "Filmora writer available: {0}".format(
+                        "yes" if result.get("filmora_writer_available") else "no"
+                    )
+                )
+            return 0 if result["valid_seed_shape"] else 1
+        if args.command == "rough-cut-project":
+            result = write_rough_cut_project(
+                args.seed,
+                args.output,
+                args.plan,
+                expected_source_sha256=args.expect_sha256,
+            )
+            if args.json:
+                _dump_json(result)
+            else:
+                print(result["output"])
+                print("Linked A/V pairs: {0}".format(result["output_pair_count"]))
+                print("Timeline duration: {0:.3f}s".format(result["output_duration_seconds"]))
+                print("Source-aware audit: valid")
             return 0
     except WfpError as exc:
         if getattr(args, "json", False):
