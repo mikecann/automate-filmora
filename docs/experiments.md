@@ -508,6 +508,16 @@ passed evaluation, opened in Filmora, and its Save As copy
 existing enabled shape; model execution, insertion, and disabling remain out
 of scope.
 
+## Tracking control boundary
+
+Enabling Motion Tracking inserted an `ObjTracking` effect with the stable
+`ObjectTracking` display/id and an `ObjectTrackingPtr` parameter, but left the
+pointer disabled until the user starts a tracking run. Its resource `userData`
+and effect UID are generated. Planar Tracking triggered an AI-model update and
+then warned that it would remove existing animation/tracking/zoom effects; the
+operation was cancelled. Tracking is therefore partial read-only mapping, not
+a writer contract.
+
 ## Track-control persistence probe
 
 On `257-track-controls-baseline.wfp`, toggling the visible `Video 1` Mute

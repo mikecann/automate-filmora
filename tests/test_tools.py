@@ -3129,6 +3129,50 @@ class FilmoraProjectToolsTest(unittest.TestCase):
             }
             self.assertEqual(voice_values["fxParam.unValue"], [2])
 
+    def test_map_profiles_motion_tracking_pointer_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = write_cloneable_title_project(root / "source.wfp")
+
+            def add_tracking(timeline):
+                video = next(
+                    clip
+                    for track in timeline["timelineInfos"][0]["trackInfos"]
+                    for clip in track["clipList"]
+                    if clip["type"] == 6
+                )
+                video["type"] = 1
+                video["effectChainList"] = [
+                    {
+                        "name": "ObjTracking",
+                        "effectList": [
+                            {
+                                "display": "ObjectTracking",
+                                "id": "87289B96-239D-4740-BF86-023F54349902",
+                                "paramList": [
+                                    {
+                                        "name": "ObjectTrackingPtr",
+                                        "fxParam": {
+                                            "paramType": 7,
+                                            "unValue": {"enabled": False, "visble": True},
+                                        },
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+
+            project = _rewrite_main_timeline(source, root / "tracking.wfp", add_tracking)
+            result = map_project(project)
+            tracking = next(
+                effect
+                for effect in result["effects"]
+                if effect["id"] == "87289B96-239D-4740-BF86-023F54349902"
+            )
+            self.assertEqual(tracking["parameters"][0]["name"], "ObjectTrackingPtr")
+            self.assertEqual(tracking["parameters"][0]["value_path"], "fxParam.paramType")
+
     def test_map_profiles_embedded_json_and_xml_without_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

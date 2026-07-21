@@ -73,7 +73,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("video.analysis", "Video Denoise and Lens Correction", "partial", "Video Denoise status and sigma mapped with guarded writer; Lens Correction open"),
     ("video.ai", "AI Video Enhancer modes", "external_dependency", "credit and model UI only"),
     ("video.ai", "AI Object Remover", "external_dependency", "UI inventoried only"),
-    ("video.tracking", "Motion and Planar Tracking", "open", "UI inventoried only"),
+    ("video.tracking", "Motion and Planar Tracking", "partial", "Motion Tracking insertion shape mapped; tracking run and Planar model path remain open"),
 ]
 
 

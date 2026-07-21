@@ -53,3 +53,22 @@ not insert the object, run the model update, or toggle the status flag.
 Lens Correction has a visible control but no controlled before/after pair yet.
 Motion Blur and the AI panels depend on processing, models, or credits and
 remain external or incomplete until a local serialized result can be captured.
+
+## Tracking
+
+Enabling Motion Tracking on the same visual clip inserted an `ObjTracking`
+effect-chain entry with:
+
+```json
+{
+  "display": "ObjectTracking",
+  "id": "87289B96-239D-4740-BF86-023F54349902",
+  "paramList": [{"name": "ObjectTrackingPtr", "fxParam": {"paramType": 7,
+  "unValue": {"enabled": false, "visble": true}}}]
+}
+```
+
+The resource `userData` and instance ID are generated. This is enough to map
+the insertion shape, not enough to write a usable tracked result. Planar
+Tracking opened a model-update gate and then a destructive confirmation, so it
+remains unverified and external.
