@@ -153,6 +153,9 @@ exactly verified nodes. They are not yet edit-plan operations and must not
 insert missing parameters or effects.
 The Background Blur writer follows the same boundary: it may replace only an
 existing clip's strength and enable fields, never first-use graph insertion.
+The static opacity writer is limited to an existing type-1 upper-track overlay
+with a parseable `pipBuf.Opacity` scalar; it does not synthesize overlays or
+edit keyframed opacity.
 Schemas 1 through 9 remain
 immutable and supported.
 

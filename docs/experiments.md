@@ -9,6 +9,19 @@
 - Evidence: one `AdjustColor` effect was inserted with `u_exposure` as a direct `paramType: 3` scalar. Normal Color and Mask holding chains were also materialized. `eval-format` passed.
 - Boundary: this confirms first-use insertion for Basic Color only, not a generic writer.
 
+### 2026-07-21: Upper-track overlay opacity
+
+- Filmora: 15.6.4.11894 on macOS
+- UI change: created a disposable upper-track overlay fixture, selected the clip, and set Video > Compositing > Opacity from 100 to 50, then repeated from 50 to 25.
+- Before/after: `208-overlay-fixture.wfp` → `209-overlay-opacity-50.wfp` → `210-overlay-opacity-25.wfp`
+- Evidence: both UI diffs changed only the embedded `pipBuf.Opacity` semantic field, with `pipBufSize` changing when the serialized byte length changed. The copy-only `replace_clip_opacity` writer generated `211-overlay-opacity-generated-25.wfp`, changed only the existing scalar, and passed `eval-format` plus its semantic audit.
+- Boundary: static opacity on an existing type-1 overlay is writable. Keyframed opacity, first-use insertion, and Blend Mode remain open.
+
+The adjacent Blend Mode control also produced one useful negative result: a
+save with the visible mode still Normal normalized `pipBuf.BlendMode` from
+integer `0` to string `"Normal"`. Since no non-Normal option was selected, this
+does not authorize a Blend Mode writer.
+
 Use controlled before/after saves. Do not infer a field from one complicated edit.
 
 ## Protocol

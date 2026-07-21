@@ -1,6 +1,6 @@
 """Evidence-driven tools for Wondershare Filmora project files."""
 
-__version__ = "0.13.4"
+__version__ = "0.13.5"
 
 from .analysis import inspect_project, list_titles, validate_project
 from .anchor import (
@@ -72,6 +72,7 @@ from .position import (
     preflight_clip_position,
     replace_clip_position,
 )
+from .opacity import audit_clip_opacity_copy, preflight_clip_opacity, replace_clip_opacity
 from .scale import (
     audit_clip_scale_copy,
     preflight_clip_scale,

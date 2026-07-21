@@ -51,6 +51,7 @@ from filmora_wfp import (
     preflight_clip_corner_radius,
     preflight_clip_fade_out,
     preflight_clip_position,
+    preflight_clip_opacity,
     preflight_clip_scale,
     preflight_clip_horizontal_flip,
     preflight_clip_vertical_flip,
@@ -1464,6 +1465,26 @@ class FilmoraProjectToolsTest(unittest.TestCase):
                     clip_uid="vertical-flipped-video",
                     old_enabled=False,
                     new_enabled=True,
+                )
+
+    def test_existing_overlay_opacity_preflight_is_source_aware(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base = write_project(root / "base.wfp")
+            source = _rewrite_main_timeline(
+                base,
+                root / "source.wfp",
+                lambda timeline: timeline["timelineInfos"][0]["trackInfos"][0]["clipList"][0].update(
+                    {"pipBuf": '{"Algorithm":"Bilinear","BlendMode":0,"Opacity":50.0}', "pipBufSize": 58}
+                ),
+            )
+            result = preflight_clip_opacity(
+                source, clip_uid="video-clip", old_opacity=50, new_opacity=25
+            )
+            self.assertEqual(result["matching_archive_occurrences"], 1)
+            with self.assertRaisesRegex(WfpError, "does not match"):
+                preflight_clip_opacity(
+                    source, clip_uid="video-clip", old_opacity=40, new_opacity=25
                 )
 
     def test_replace_existing_uniform_corner_radius_is_guarded_and_audited(self) -> None:

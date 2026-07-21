@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="automate-filmora",
-    version="0.13.4",
+    version="0.13.5",
     description="Inspect and safely automate Wondershare Filmora project files",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

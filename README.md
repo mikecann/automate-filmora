@@ -83,6 +83,10 @@ clip's `backgroundFillBluredness` and `backgroundFillEnable` fields. It is
 copy-only and source-aware, and deliberately refuses to synthesize Filmora's
 first-use holding chains.
 
+`replace_clip_opacity` similarly edits only an existing static opacity scalar
+inside a genuine upper-track overlay's `pipBuf`; it rejects missing overlays,
+keyframed opacity, stale values, and first-use insertion.
+
 Repeat the same audit explicitly with:
 
 ```bash

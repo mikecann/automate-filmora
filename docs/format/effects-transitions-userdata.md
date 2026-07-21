@@ -447,6 +447,19 @@ that its controls apply to a base-track clip. Static opacity and Blend Mode
 remain open until a controlled project contains a genuine upper-track overlay;
 the existing `pipBuf` field names are structural evidence only.
 
+On a disposable genuine upper-track overlay, changing Compositing > Opacity
+from 100 to 50 and then from 50 to 25 changed only the embedded
+`pipBuf.Opacity` number and its `pipBufSize` byte count. Both generated
+projects passed the format evaluator. The guarded `replace_clip_opacity`
+writer supports this existing static overlay field only; keyframed opacity and
+first-use insertion remain unsupported. Blend Mode still has no controlled
+pair.
+
+Focusing and saving the same overlay's Blend Mode with the visible value still
+set to Normal normalized the embedded `pipBuf.BlendMode` from numeric `0` to
+the string `"Normal"`. This is a serialization-normalization observation, not
+a controlled non-Normal mode change, so Blend Mode remains open.
+
 ### Controlled Background blur
 
 Basic > Background is separate from Compositing and did persist on the same
