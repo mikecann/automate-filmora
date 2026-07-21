@@ -55,7 +55,7 @@ _ROWS: List[Tuple[str, str, str, str]] = [
     ("color.basic", "sharpen", "mapped", "separate effect repeat"),
     ("color.vignette", "amount size roundness feather exposure highlight", "mapped", "direct scalar repeats"),
     ("color.hsl", "channel hue prefixes and Red HSL", "mapped", "controlled channel sweep"),
-    ("color.hsl", "non-Red saturation and luminance", "partial", "Orange saturation repeated; luminance suffix still open"),
+    ("color.hsl", "non-Red saturation and luminance", "mapped", "Orange saturation and luminance repeats"),
     ("color.curves", "RGB curves", "partial", "knots and derived controls mapped"),
     ("color.curves", "six Hue Saturation curve modes", "partial", "one mode edited"),
     ("color.wheels", "shadow midtone highlight red component", "partial", "conversion incomplete"),

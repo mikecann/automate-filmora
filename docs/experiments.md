@@ -112,8 +112,9 @@ Balance, LUT, HSL, and Curves remain open.
 The next batch mapped the full HSL channel prefix set, all three Red HSL
 scalars, and one repeated luma Curves midpoint. Curves serialize the visible
 knot plus two derived Bezier-control arrays, so they remain read-only until the
-handle derivation is proven. HSL section toggles and non-Red saturation and
-luminance remain open.
+handle derivation is proven. Controlled Orange repeats then confirmed direct
+`Orange_satVal` and `Orange_brightnessVal` scalars for non-Red saturation and
+luminance. HSL section toggles and a generic HSL writer remain open.
 A Hue-vs-Sat midpoint repeat then isolated the separate CurveColor payload. Its
 array declares all six Hue/Saturation curve modes; only the selected mode's
 JSON string changed. Other mode-specific point/control derivations remain open.

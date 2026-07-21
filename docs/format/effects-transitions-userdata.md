@@ -307,7 +307,10 @@ In particular, Filmora's cyan-colored chip uses `Aqua_hueVal`, not `Cyan`.
 All values used `paramType: 3` and stored the UI number directly. A controlled
 Orange repeat from saturation `15` to `27` added no new structure and changed
 only `Orange_satVal`, confirming the same direct scalar rule outside the Red
-channel. Luminance and a guarded writer remain open.
+channel. A second controlled Orange repeat from luminance `15` to `27` changed
+only `Orange_brightnessVal`, confirming the brightness/luminance suffix rule as
+well. These scalar observations are mapped, but no generic HSL writer is
+exposed yet.
 
 ### Controlled RGB Curves change
 
