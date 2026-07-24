@@ -1228,6 +1228,98 @@ def build_rough_cut_plan(
     }
 
 
+def build_rough_cut_inputs(
+    *,
+    source_name: str,
+    duration_seconds: float,
+    silences: Sequence[SilenceInterval],
+    transcript: Sequence[TranscriptSegment],
+    softening_buffer: float = 0.4,
+    threshold_db: float = -35.0,
+    minimum_silence: float = 0.5,
+) -> Dict[str, Any]:
+    """Build time-aligned sections without making editorial decisions.
+
+    Video HQ sends this complete ordered transcript to Codex. Python owns the
+    media-specific work only: silence boundaries, timestamps, and transcript
+    text. It deliberately does not try to identify false starts or good takes.
+    """
+
+    duration = _finite_non_negative(duration_seconds, "duration_seconds")
+    speech_ranges = speech_regions_from_silences(
+        duration,
+        silences,
+        softening_buffer=softening_buffer,
+    )
+    region_texts = _texts_for_ranges(speech_ranges, transcript)
+    transcript_evidence = _transcript_evidence_for_ranges(speech_ranges, transcript)
+    regions = []
+    for index, ((start, end), text, has_evidence) in enumerate(
+        zip(speech_ranges, region_texts, transcript_evidence),
+        start=1,
+    ):
+        regions.append(
+            {
+                "id": "speech-{0:04d}".format(index),
+                "start": start,
+                "end": end,
+                "text": text,
+                "decision": "review",
+                "confidence": 0.0,
+                "reason": "awaiting_codex_analysis",
+                "duplicate_of": None,
+                "has_transcript_evidence": has_evidence,
+            }
+        )
+
+    return {
+        "schema_version": 1,
+        "source": {
+            "filename": source_name,
+            "duration_seconds": duration,
+        },
+        "settings": {
+            "threshold_db": float(threshold_db),
+            "minimum_silence_seconds": float(minimum_silence),
+            "softening_buffer_seconds": float(softening_buffer),
+            "classification": "codex",
+        },
+        "silences": [
+            asdict(item)
+            for item in _validate_intervals(silences, duration_seconds=duration)
+        ],
+        "regions": regions,
+    }
+
+
+def write_rough_cut_inputs(
+    output_directory: Pathish,
+    *,
+    inputs: Dict[str, Any],
+    transcript: Sequence[TranscriptSegment],
+) -> Dict[str, str]:
+    """Write the media evidence consumed by Video HQ's Codex analysis."""
+
+    destination = Path(output_directory).expanduser().resolve()
+    if destination.exists():
+        raise WfpError("Refusing to overwrite rough-cut output: {0}".format(destination))
+    destination.mkdir(parents=True)
+    inputs_path = destination / "rough-cut-input.json"
+    transcript_path = destination / "transcript.json"
+    inputs_path.write_text(
+        json.dumps(inputs, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    transcript_path.write_text(
+        json.dumps(transcript_to_json(transcript), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "inputs": str(inputs_path),
+        "transcript": str(transcript_path),
+    }
+
+
 def write_rough_cut_outputs(
     output_directory: Pathish,
     *,

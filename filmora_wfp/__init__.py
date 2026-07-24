@@ -133,6 +133,7 @@ from .rough_cut import (
     TakeDecision,
     TranscriptSegment,
     TranscriptWord,
+    build_rough_cut_inputs,
     build_rough_cut_plan,
     compare_keep_ranges,
     detect_duplicate_takes,
@@ -146,6 +147,7 @@ from .rough_cut import (
     speech_regions_from_silences,
     transcribe_media,
     transcribe_media_ranges,
+    write_rough_cut_inputs,
     write_rough_cut_outputs,
 )
 from .rough_cut_wfp import (
@@ -292,6 +294,7 @@ __all__ = [
     "TakeDecision",
     "TranscriptSegment",
     "TranscriptWord",
+    "build_rough_cut_inputs",
     "build_rough_cut_plan",
     "compare_keep_ranges",
     "detect_duplicate_takes",
@@ -305,6 +308,7 @@ __all__ = [
     "speech_regions_from_silences",
     "transcribe_media",
     "transcribe_media_ranges",
+    "write_rough_cut_inputs",
     "write_rough_cut_outputs",
     "audit_rough_cut_project",
     "inspect_rough_cut_seed_shape",

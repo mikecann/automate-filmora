@@ -15,6 +15,7 @@ from filmora_wfp.rough_cut import (
     SpeechRegion,
     TranscriptSegment,
     TranscriptWord,
+    build_rough_cut_inputs,
     build_rough_cut_plan,
     compare_keep_ranges,
     detect_duplicate_takes,
@@ -27,6 +28,37 @@ from filmora_wfp.rough_cut import (
 
 
 class RoughCutPlanningTest(unittest.TestCase):
+    def test_builds_unclassified_inputs_for_codex_without_take_heuristics(self) -> None:
+        inputs = build_rough_cut_inputs(
+            source_name="recording.mp4",
+            duration_seconds=10.0,
+            silences=[SilenceInterval(2.0, 3.0), SilenceInterval(7.0, 8.0)],
+            transcript=[
+                TranscriptSegment(0.2, 1.8, "So the idea is"),
+                TranscriptSegment(3.2, 6.8, "So the idea is to keep this"),
+                TranscriptSegment(8.2, 9.8, "and finish the sentence"),
+            ],
+            softening_buffer=0.0,
+        )
+
+        self.assertEqual(
+            [region["text"] for region in inputs["regions"]],
+            [
+                "So the idea is",
+                "So the idea is to keep this",
+                "and finish the sentence",
+            ],
+        )
+        self.assertEqual(
+            [region["decision"] for region in inputs["regions"]],
+            ["review", "review", "review"],
+        )
+        self.assertEqual(
+            {region["reason"] for region in inputs["regions"]},
+            {"awaiting_codex_analysis"},
+        )
+        self.assertNotIn("repeated_word_spans", inputs)
+
     def test_parses_ffmpeg_duration_and_silence_intervals(self) -> None:
         output = """
 Duration: 00:01:05.250, start: 0.000000, bitrate: 128 kb/s
@@ -670,6 +702,34 @@ two lines
             self.assertEqual(
                 transcribe_mock.call_args.args[1],
                 [(0.0, 2.4), (2.6, 6.0)],
+            )
+
+    def test_cli_writes_unclassified_codex_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            media = root / "recording.mp4"
+            media.write_bytes(b"fixture")
+            output = root / "rough-cut"
+            stdout = io.StringIO()
+            with patch(
+                "filmora_wfp.cli.detect_silence",
+                return_value=(6.0, [SilenceInterval(2.0, 3.0)]),
+            ), patch(
+                "filmora_wfp.cli.transcribe_media_ranges",
+                return_value=[TranscriptSegment(0.0, 5.5, "A complete transcript")],
+            ), redirect_stdout(stdout), redirect_stderr(io.StringIO()):
+                exit_code = cli_main(
+                    ["rough-cut-inputs", str(media), str(output), "--json"]
+                )
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output / "rough-cut-input.json").is_file())
+            self.assertTrue((output / "transcript.json").is_file())
+            self.assertFalse((output / "rough-cut-plan.json").exists())
+            inputs = json.loads((output / "rough-cut-input.json").read_text())
+            self.assertEqual(
+                {region["reason"] for region in inputs["regions"]},
+                {"awaiting_codex_analysis"},
             )
 
     def test_compares_predicted_and_manual_keep_ranges_by_time(self) -> None:

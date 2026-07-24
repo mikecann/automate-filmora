@@ -23,6 +23,7 @@ from .evals import evaluate_project
 from .feature_coverage import feature_coverage
 from .mapping import map_project
 from .rough_cut import (
+    build_rough_cut_inputs,
     build_rough_cut_plan,
     detect_silence,
     evaluate_rough_cut_plan,
@@ -30,6 +31,7 @@ from .rough_cut import (
     load_transcript,
     speech_regions_from_silences,
     transcribe_media_ranges,
+    write_rough_cut_inputs,
     write_rough_cut_outputs,
 )
 from .rough_cut_wfp import write_rough_cut_project
@@ -603,6 +605,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rough_cut_parser.add_argument("--json", action="store_true")
 
+    rough_cut_inputs_parser = subparsers.add_parser(
+        "rough-cut-inputs",
+        help="Transcribe media and write silence-delimited inputs for an external reviewer",
+    )
+    rough_cut_inputs_parser.add_argument("media")
+    rough_cut_inputs_parser.add_argument("output_directory")
+    rough_cut_inputs_parser.add_argument(
+        "--transcript",
+        help="Reuse an existing SRT or rough-cut transcript JSON instead of transcribing",
+    )
+    rough_cut_inputs_parser.add_argument("--model", default="small.en")
+    rough_cut_inputs_parser.add_argument("--device", default="cpu")
+    rough_cut_inputs_parser.add_argument("--compute-type", default="int8")
+    rough_cut_inputs_parser.add_argument("--ffmpeg", default="ffmpeg")
+    rough_cut_inputs_parser.add_argument("--threshold-db", type=float, default=-35.0)
+    rough_cut_inputs_parser.add_argument("--minimum-silence", type=float, default=0.5)
+    rough_cut_inputs_parser.add_argument("--softening-buffer", type=float, default=0.4)
+    rough_cut_inputs_parser.add_argument("--json", action="store_true")
+
     rough_cut_eval_parser = subparsers.add_parser(
         "rough-cut-eval",
         help="Compare a rough-cut plan with linked source ranges in a manual WFP edit",
@@ -723,7 +744,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             result = apply_edit_plan(args.project, args.output, args.plan)
             _dump_json(result) if args.json else _print_plan_application(result)
             return 0
-        if args.command == "rough-cut-plan":
+        if args.command in ("rough-cut-plan", "rough-cut-inputs"):
             print("Detecting silence...", file=sys.stderr)
             duration, silences = detect_silence(
                 args.media,
@@ -750,6 +771,33 @@ def main(argv: Optional[List[str]] = None) -> int:
                 )
                 transcription_mode = "independent_silence_regions"
             media_path = Path(args.media).expanduser().resolve()
+            if args.command == "rough-cut-inputs":
+                inputs = build_rough_cut_inputs(
+                    source_name=media_path.name,
+                    duration_seconds=duration,
+                    silences=silences,
+                    transcript=transcript,
+                    softening_buffer=args.softening_buffer,
+                    threshold_db=args.threshold_db,
+                    minimum_silence=args.minimum_silence,
+                )
+                inputs["settings"]["transcription_mode"] = transcription_mode
+                outputs = write_rough_cut_inputs(
+                    args.output_directory,
+                    inputs=inputs,
+                    transcript=transcript,
+                )
+                summary = {
+                    "outputs": outputs,
+                    "regions": len(inputs.get("regions") or []),
+                }
+                if args.json:
+                    _dump_json(summary)
+                else:
+                    print(outputs["inputs"])
+                    print("Speech regions: {0}".format(summary["regions"]))
+                return 0
+
             plan = build_rough_cut_plan(
                 source_name=media_path.name,
                 duration_seconds=duration,
