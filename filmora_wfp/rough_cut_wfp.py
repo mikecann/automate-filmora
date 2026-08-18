@@ -121,10 +121,12 @@ def _validate_seed_pair(
             raise WfpError("Rough-cut seed speed must start at source zero")
         expected_end = Decimal(declared_duration) / TICKS_PER_SECOND
         actual_end = _plain_number(speed.get("offsetEnd"), "seed speed offsetEnd")
-        # Filmora 15.7.3 writes the visual offsetEnd to millisecond precision
-        # while the linked audio value retains seven decimals. The timeline and
-        # source ticks remain exact, so accept only that tiny native mismatch.
-        if abs(actual_end - expected_end) > Decimal("0.001"):
+        # Filmora 15.7 writes imported stream duration and frame-quantized
+        # timeline duration through different paths. On 29.97/30 fps sources
+        # the native offsetEnd can differ by several milliseconds even though
+        # the linked clip ticks are exact. Accept up to one conservative
+        # 20 fps frame, but still reject an actual source-range mismatch.
+        if abs(actual_end - expected_end) > Decimal("0.05"):
             raise WfpError("Rough-cut seed speed does not cover the source duration")
     if video.get("speed", {}).get("speedParam") != audio.get("speed", {}).get("speedParam"):
         raise WfpError("Rough-cut seed clips do not share identical speed parameters")

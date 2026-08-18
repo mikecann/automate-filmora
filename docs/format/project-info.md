@@ -1,6 +1,7 @@
 # Project metadata and load integrity
 
-Status: controlled load experiments with Filmora 15.6.4.11894 on macOS.
+Status: controlled load experiments with Filmora 15.6.4.11894 and
+15.7.11.12437 on macOS.
 
 `ProjectFolder/project_info.json` is not just descriptive metadata. At least one
 field participates in a Filmora load-integrity check.
@@ -39,3 +40,22 @@ opaque. There is still no evidence that external tooling can calculate it.
 
 The project name and stored save path may be updated for a copy. Filmora still
 uses the actual opened path as the project location.
+
+## Seedless creation experiment, Filmora 15.7.11.12437
+
+On 2026-07-31, two independent single-source Fixture A projects and one
+single-source Fixture B project were created in Filmora on macOS 26.5.2. The
+same media received the same `sourceUuid` across both A projects, while project,
+timeline, track, clip, effect, and link identifiers varied. A no-op save made
+no byte change.
+
+A scratch-built project passed archive validation, media validation, format
+evaluation, and the rough-cut seed-shape audit, but Filmora rejected it as
+incompatible before timeline parsing. Preserving the observed
+`project_guid`/`project_source`/`project_date_modify` tuple was not enough.
+This confirms that a truly seedless WFP writer is still unsafe. Do not ship an
+embedded opaque token or machine-specific bootstrap project as a substitute.
+
+The practical supported path remains a Filmora-created single-source project.
+Callers such as Video HQ may discover and reuse that project automatically, so
+the user does not need to create or name a separate automation template.

@@ -126,10 +126,11 @@ python3 -m filmora_wfp rough-cut-project \
 ```
 
 The writer refuses to overwrite either path. It verifies the plan filename and
-duration against the seed media, rounds keep starts down and keep ends up to the
-nearest project frame, packs the retained ranges from timeline zero, and creates
-one linked visual/audio pair per resulting range. It assigns fresh clip, effect,
-and pair-link identifiers to every clone.
+duration against the seed media, allows up to one conservative frame of
+Filmora-native stream/timeline duration rounding, rounds keep starts down and
+keep ends up to the nearest project frame, packs the retained ranges from
+timeline zero, and creates one linked visual/audio pair per resulting range. It
+assigns fresh clip, effect, and pair-link identifiers to every clone.
 
 The source-aware audit checks the complete linked range list, gapless placement,
 unique identifiers, project and media duration metadata, archive integrity, and
@@ -138,6 +139,14 @@ byte preservation of unrelated members. It deliberately preserves
 integrity relationship is opaque.
 
 ## Evidence and remaining acceptance step
+
+Filmora 15.7.11.12437 on macOS 26.5.2 accepted a real 4K Cannvas camera project
+whose imported stream `offsetEnd` was about 5.7 ms shorter than its
+frame-quantized linked clip duration. A 177-pair Video HQ rough cut generated
+from that source passed the writer audit, media validation, and format
+evaluation, then opened, played, saved, and reopened in Filmora. The Filmora
+resave also passed media validation and format evaluation with all 1,593
+instance identifiers unique.
 
 A repeated Filmora 15.7.3.12221 experiment on macOS 26.5.2 proved deletion and
 ripple behaviour for a middle linked pair:

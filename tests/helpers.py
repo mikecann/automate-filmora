@@ -133,7 +133,12 @@ def _encoded(value: str) -> str:
     return base64.b64encode(value.encode("ascii")).decode("ascii")
 
 
-def write_rough_cut_seed(path: Path, *, duration_ticks: int = 50_000_000) -> Path:
+def write_rough_cut_seed(
+    path: Path,
+    *,
+    duration_ticks: int = 50_000_000,
+    speed_offset_end_delta: float = 0.0,
+) -> Path:
     """Write the narrow Filmora-created shape accepted by the rough-cut writer."""
 
     link_id = "AA-BB-CC-DD-EE-FF-4A-BB-8C-DD-EE-FF-AA-BB-CC-DD"
@@ -168,7 +173,7 @@ def write_rough_cut_seed(path: Path, *, duration_ticks: int = 50_000_000) -> Pat
         "thisUId": "10000000-0000-4000-8000-000000000001",
         "speed": {
             "offset": 0.0,
-            "offsetEnd": duration_ticks / 10_000_000,
+            "offsetEnd": duration_ticks / 10_000_000 + speed_offset_end_delta,
             "reverse": False,
             "speedParam": speed_param,
         },
@@ -193,7 +198,11 @@ def write_rough_cut_seed(path: Path, *, duration_ticks: int = 50_000_000) -> Pat
             "offset": 0.0,
             # Filmora 15.7.3 may store the visual end with only millisecond
             # precision, even while its ticks and linked audio remain exact.
-            "offsetEnd": duration_ticks / 10_000_000 - 0.0004,
+            "offsetEnd": (
+                duration_ticks / 10_000_000
+                - 0.0004
+                + speed_offset_end_delta
+            ),
             "reverse": False,
             "speedParam": speed_param,
         },

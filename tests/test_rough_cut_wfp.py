@@ -49,6 +49,32 @@ class RoughCutWfpTest(unittest.TestCase):
             self.assertEqual(result["seed"]["source_filename"], "camera.mp4")
             self.assertEqual(result["source"]["filmora_version"], "15.7.3.12221")
 
+    def test_seed_inspection_accepts_small_native_speed_duration_rounding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            seed = write_rough_cut_seed(
+                Path(temporary) / "seed.wfp",
+                speed_offset_end_delta=-0.01,
+            )
+
+            result = inspect_rough_cut_seed_shape(seed)
+
+            self.assertTrue(result["valid_seed_shape"], result)
+
+    def test_seed_inspection_rejects_large_speed_duration_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            seed = write_rough_cut_seed(
+                Path(temporary) / "seed.wfp",
+                speed_offset_end_delta=-0.10,
+            )
+
+            result = inspect_rough_cut_seed_shape(seed)
+
+            self.assertFalse(result["valid_seed_shape"], result)
+            self.assertIn(
+                "speed does not cover the source duration",
+                "; ".join(result["issues"]),
+            )
+
     def test_preflight_quantizes_outward_and_builds_gapless_timeline(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             seed = write_rough_cut_seed(Path(temporary) / "seed.wfp")
