@@ -1,259 +1,201 @@
 # automate-filmora
 
-Experimental, evidence-driven tooling for inspecting and narrowly automating
-Wondershare Filmora project files.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Filmora 15 `.wfp` projects are ZIP archives containing JSON project metadata,
-timeline documents, thumbnails, and references to external media. A `.wfpbundle`
-is an outer ZIP carrying one embedded `.wfp` plus copied source media; the tools
-inspect that embedded project without extracting or reading the bundled footage.
-This repository documents the observed format and provides copy-only tools for
-exploring it.
+`automate-filmora` is an experimental Python toolkit for inspecting Wondershare
+Filmora project files and making a small set of evidence-backed edits to new
+copies.
 
-## Safety contract
+Filmora's `.wfp` format is undocumented and changes between versions. This
+project exists to replace guesswork with repeatable inspection, controlled
+before/after experiments, and conservative automation that fails closed when a
+project does not match a proven shape.
 
-- Treat Filmora's format as undocumented and version-specific.
-- Never modify the only copy of a project.
-- Every mutation must write a new project path and refuse to overwrite either file.
-- Do not commit real `.wfp` files, bundled media, or private absolute paths.
-- Record the Filmora build and the controlled experiment behind every claimed field.
+This is not a generic Filmora API, a full WFP writer, or an AI video editor.
 
-## Quick start
+## What works today
 
-No dependencies are required beyond Python 3.9 or newer.
+| Area | Current support |
+| --- | --- |
+| Project inspection | Summarize, validate, map, diff, and safely unpack `.wfp` projects. Absolute paths are redacted by default. |
+| Bundles | Read the single embedded project inside a `.wfpbundle` without inspecting or extracting its bundled footage. Bundle writing is not supported. |
+| Format research | Inventory timeline graphs, duplicate JSON keys, titles, effects, transitions, identifiers, and opaque payload shapes. Run compatibility probes against new Filmora builds. |
+| Copy-only edits | Apply strictly validated operations for selected existing titles, transforms, audio settings, transitions, and linked A/V clips. Some additional guarded operations are available through the Python API. |
+| Rough cuts | Build a reviewable silence and repeated-take plan, then generate a gapless project from a narrowly supported Filmora-created single-source seed. |
+
+The project deliberately distinguishes between a field that has merely been
+observed and one that is safe to write. Run the coverage report for the current
+inventory:
 
 ```bash
-python3 -m filmora_wfp validate "/path/to/project.wfp"
-python3 -m filmora_wfp inspect "/path/to/project.wfp"
-python3 -m filmora_wfp map "/path/to/project.wfp"
-python3 -m filmora_wfp eval-format "/path/to/project.wfp"
-python3 -m filmora_wfp survey "/path/to/project-folder" --reference-version 15.6.4.11894
 python3 -m filmora_wfp feature-coverage
-python3 -m filmora_wfp feature-coverage --status open --json
-python3 -m filmora_wfp titles "/path/to/project.wfp"
-python3 -m filmora_wfp diff before.wfp after.wfp --member timeline.wesproj
-python3 -m filmora_wfp edit-targets "/path/to/project.wfp"
-python3 -m filmora_wfp explain-plan project.wfp work/edit-plan.json
-python3 -m filmora_wfp rough-cut-plan recording.mp4 work/recording-rough-cut
-python3 -m filmora_wfp rough-cut-seed work/recording-seed.wfp
-python3 -m filmora_wfp rough-cut-project work/recording-seed.wfp \
-  work/recording-rough-cut/rough-cut-plan.json \
-  work/recording-rough-cut/recording-automated-rough-cut.wfp
+python3 -m filmora_wfp feature-coverage --status writable
 ```
 
-`map` is the broad reverse-engineering command. It inventories normalized JSON
-paths, duplicate keys, the canonical timeline graph, clip signatures, identifier
-references, effects, transitions, title schemas, media metadata, and opaque
-`userData` payload shapes without modifying the project. It also profiles schemas
-inside parseable JSON strings and tag/attribute names inside XML strings without
-retaining their values. `eval-format` turns the
-important invariants into repeatable pass/fail probes for future Filmora builds.
-`survey` recursively discovers and SHA-256 de-duplicates a read-only project
-corpus, then aggregates redacted versions, schema fields, clip types, effects,
-transitions, title shapes, and eval failures. For `.wfpbundle`, the fingerprint is
-of the embedded project rather than its potentially huge media payload. Pass
-`--json` for the full evidence map, or `--output work/corpus.json` to save it
-without shell redirection. Source paths are omitted unless `--reveal-paths` is
-explicitly supplied, and an existing output file is never overwritten.
+See [Filmora feature coverage](docs/feature-coverage.md) for the meaning of
+`writable`, `mapped`, `partial`, `open`, and `external_dependency`.
 
-Add `--json` to `inspect`, `map`, `eval-format`, `titles`, `validate`, `diff`, or
-any edit-plan command for machine-readable output. Paths are reduced to
-basenames unless `--reveal-paths` is supplied.
+## Install from this repository
 
-Pass `--check-media` to `validate` when the project must open on the current
-machine. A missing external source makes that explicit media validation fail,
-even when the WFP archive itself is structurally sound.
-
-`unpack` safely extracts a project to a new directory without touching the source:
+The inspector and project tools support Python 3.9 or newer and have no runtime
+Python dependencies.
 
 ```bash
-python3 -m filmora_wfp unpack project.wfp work/unpacked-project
+git clone https://github.com/mikecann/automate-filmora.git
+cd automate-filmora
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+.venv/bin/filmora-project --help
 ```
 
-The first narrow writer clones a known compound title-card graph. It requires an
-existing card made by the same Filmora build, exact timeline ticks, explicit text
-metrics, and a new output path:
+The installed command is `filmora-project`. You can also run the same CLI from a
+checkout without installing it:
 
 ```bash
-python3 -m filmora_wfp clone-title-cards project.wfp completed.wfp \
-  --template-timeline <outer-timeline-id> \
-  --spec work/title-cards.json \
-  --expect-sha256 <source-sha256>
+python3 -m filmora_wfp --help
 ```
 
-The specification is a JSON array. Each entry supplies `start_ticks`, `heading`,
-`subheading`, `heading_font_size`, `heading_scale_x`, `subheading_font_size`, and
-`subheading_scale_x`. The command refuses an existing output and aborts if the
-source changes while the copy is being written. It also runs a source-aware audit
-before returning. A failed audit removes the newly generated output.
+Rough-cut silence detection additionally needs an `ffmpeg` executable.
+Transcription uses the optional `faster-whisper` package, or you can provide an
+existing SRT or planner JSON transcript. This repository does not download
+either dependency for you.
 
-The low-level API also exposes `replace_clip_background_blur` for an existing
-clip's `backgroundFillBluredness` and `backgroundFillEnable` fields. It is
-copy-only and source-aware, and deliberately refuses to synthesize Filmora's
-first-use holding chains.
+## Try a read-only inspection
 
-`replace_clip_opacity` similarly edits only an existing static opacity scalar
-inside a genuine upper-track overlay's `pipBuf`; it rejects missing overlays,
-keyframed opacity, stale values, and first-use insertion.
-
-`replace_clip_audio_balance` edits an existing audio `Balance` parameter using
-the verified Filmora conversion between the -100..100 UI range and its stored
-0..1 scalar.
-
-`replace_clip_hsl` edits one existing static `AdjustColor` HSL scalar such as
-`Orange_satVal` or `Red_hueVal`. It refuses first-use insertion, keyframed
-parameters, missing fields, and stale values.
-
-`replace_clip_blend_mode` edits an existing overlay `pipBuf` string mode for
-the observed `Normal`, `Multiply`, and `Screen` values. It does not normalize
-numeric `Normal`, synthesize overlays, or edit keyframes.
-
-`replace_clip_equalizer` changes one existing audio equalizer preset between
-the two presets confirmed in Filmora 15.6.4: `Rock` and `Pop`. It replaces the
-whole observed band list, so it rejects custom curves, unknown presets, and
-missing equalizer nodes rather than guessing their serialization.
-
-Repeat the same audit explicitly with:
+Start with `inspect` and `validate`. Neither command changes the project:
 
 ```bash
-python3 -m filmora_wfp audit-title-card-copy project.wfp completed.wfp --check-media
+filmora-project inspect "/path/to/My Project.wfp"
+filmora-project validate "/path/to/My Project.wfp"
+filmora-project titles "/path/to/My Project.wfp"
 ```
 
-Unlike the generic validator, this command can confirm that Filmora's protected
-project timestamp and integrity token stayed unchanged, unrelated source members
-remain byte-identical, new card media folders are complete, and every new outer
-timeline has paired visual/audio placements.
-
-For automation, prefer the versioned declarative edit-plan layer over calling the
-writer directly:
+Use `--check-media` when you also want validation to fail for missing external
+source files:
 
 ```bash
-python3 -m filmora_wfp edit-targets project.wfp --json
-python3 -m filmora_wfp explain-plan project.wfp work/edit-plan.json --json
-python3 -m filmora_wfp apply-plan project.wfp work/output.wfp work/edit-plan.json --json
+filmora-project validate "/path/to/My Project.wfp" --check-media
 ```
 
-Plans require the exact source SHA-256, resolve selectors from the latest source,
-and expose the Filmora round-trip as an explicit incomplete verification step.
-See [`docs/edit-plan-api.md`](docs/edit-plan-api.md).
-
-The headless rough-cut planner combines ffmpeg silence detection with
-independent per-audible-range faster-whisper transcription and conservative
-repeated-take detection. Resetting Whisper at each silence cut prevents it from
-joining a short false start to a later completed take. It writes a transcript,
-a review report, and source-time keep ranges under a new output directory:
+For reverse engineering, compare two saves made by the same Filmora build with
+exactly one UI change between them:
 
 ```bash
-python3 -m filmora_wfp rough-cut-plan recording.mp4 work/recording-rough-cut \
-  --ffmpeg /path/to/ffmpeg \
+filmora-project diff before.wfp after.wfp --member timeline.wesproj
+filmora-project map after.wfp --json
+filmora-project eval-format after.wfp
+```
+
+The tools redact absolute paths unless `--reveal-paths` is explicitly supplied.
+Project names, title text, media basenames, and other edit content can still be
+sensitive, so review any output before sharing it.
+
+## Make a supported project copy
+
+The preferred mutation interface is the versioned edit-plan API:
+
+```bash
+filmora-project edit-targets project.wfp --json
+filmora-project explain-plan project.wfp work/edit-plan.json --json
+filmora-project apply-plan \
+  project.wfp \
+  work/output.wfp \
+  work/edit-plan.json \
+  --json
+```
+
+`edit-targets` reports only shapes the current code knows how to edit and
+includes the exact source SHA-256 required by a plan. `explain-plan` performs a
+dry run. `apply-plan` writes a new output and runs an operation-specific audit.
+
+The declarative API currently covers:
+
+- cloning the observed compound title-card graph;
+- replacing same-serialization-length title text;
+- replacing existing rotation, position, uniform scale, volume, fade-in, and
+  fade-out values;
+- changing or removing the observed linked Dissolve and audio-fade pair;
+- moving, shortening, or splitting a supported transition-free linked A/V pair.
+
+That list is intentionally narrow. Missing parameters, first-use effect
+insertion, arbitrary JSON patches, and unrecognized graph shapes are rejected.
+See the [edit-plan API](docs/edit-plan-api.md) for plan schemas and exact
+preconditions.
+
+## Rough-cut workflow
+
+The rough-cut tools turn silence boundaries and transcript evidence into a
+reviewable source-time keep plan. They do not decide that silence alone means a
+bad take, and every proposed cut remains available for human review.
+
+```bash
+filmora-project rough-cut-plan \
+  recording.mp4 \
+  work/recording-rough-cut \
   --model small.en
+
+filmora-project rough-cut-seed seed.wfp
+
+filmora-project rough-cut-project \
+  seed.wfp \
+  work/recording-rough-cut/rough-cut-plan.json \
+  work/recording-rough-cut/output.wfp \
+  --expect-sha256 <seed-sha256>
 ```
 
-Reuse a previous SRT or planner transcript with `--transcript`. Compare a plan
-with a manually edited reference project using `rough-cut-eval`, and check a
-clean one-pair Filmora seed project using `rough-cut-seed`. The guarded
-`rough-cut-project` writer turns reviewed keep ranges into a new, gapless linked
-A/V timeline, updates the two proven duration fields, and runs a source-aware
-audit. Keep the seed hash guard on and round-trip the generated copy through the
-same Filmora build before production editing. See
-[`docs/rough-cut.md`](docs/rough-cut.md).
+The writer supports one Filmora-created linked video/audio seed pair with the
+observed normal-speed structure. It does not create a project from scratch. Read
+the [rough-cut guide](docs/rough-cut.md) before using it on production footage.
 
-By default, an audible island must overlap a transcript word to survive. That
-removes mouse, keyboard, handling, and room noises that cross the volume
-threshold. Use `--keep-untranscribed-audio` to retain those islands for manual
-review when Whisper may miss quiet speech.
+## Enforced safeguards
 
-## Repository map
+- Read-only commands never rewrite their source project.
+- Mutating commands require different input and output paths and refuse an
+  existing output.
+- Edit plans are bound to the exact input bytes with SHA-256.
+- Writers change only fields covered by a controlled experiment and preserve
+  unrelated archive members where their contract requires it.
+- Every writer runs structural and operation-specific audits. A failed audit
+  removes the newly created output.
+- `.wfpbundle` mutation is disabled because safe bundle repacking has not been
+  established.
+- Real projects, bundled media, and private absolute paths are ignored and must
+  not be committed.
 
-- `filmora_wfp/`: dependency-free inspection, validation, diff, unpack, and narrow copy tools.
-- `docs/format/`: observed project structure and field notes.
-- `docs/experiments.md`: repeatable reverse-engineering protocol.
-- `docs/edit-plan-api.md`: versioned CLI and Python mutation contract.
-- `docs/case-studies/`: sanitized observations from real projects.
-- `.agents/skills/filmora-project-automation/`: reusable Codex workflow.
-- `tests/`: synthetic fixtures and safety tests.
+These checks catch known structural mistakes. They cannot prove that an
+undocumented project will render correctly. Always keep the original and open,
+save, close, and reopen a generated copy in the exact Filmora build that created
+its template before relying on it.
 
-## Current scope
+## Compatibility and limitations
 
-The tools can currently:
+Most format mappings and writer acceptance tests come from Filmora
+`15.6.4.11894` on macOS `26.5.2`. The rough-cut work has additional,
+project-specific evidence from Filmora `15.7.3.12221` and `15.7.11.12437` on
+macOS. This is an evidence base, not a promise of compatibility with every
+Filmora 15 release, newer releases, Windows projects, or projects containing
+untested structures.
 
-- locate the main timeline through `timeline_mediaId`;
-- inventory ZIP members, resources, timelines, tracks, clips, effects, and transitions;
-- build a duplicate-key-preserving field and enum map across every JSON document;
-- distinguish canonical timelines from exact standalone timeline cache copies;
-- classify identifier relationships and opaque base64 payloads without guessing semantics;
-- profile JSON/XML strings and NUL-terminated JSON without retaining payload values;
-- run content-independent compatibility probes against real projects;
-- survey and de-duplicate a directory corpus without retaining project paths;
-- decode title text and typography stored as JSON inside `scriptBuf`;
-- locate nested timeline placements used for compound clips;
-- compare two controlled project saves, including embedded JSON changes;
-- detect malformed archives, unresolved timeline references, and unsafe ZIP paths;
-- clone the observed three-timeline section-card graph into a new project copy;
-- audit a generated copy against its exact source project;
-- discover current mutation targets and source fingerprints;
-- explain a strict, versioned edit plan without writing;
-- apply proven title-card cloning, equal-serialization-length title replacement,
-  existing Rotation, Position X/Y, linked uniform Scale X/Y, audio `VolumeGain`, `FadeInTime`, and `FadeOutTime`
-  replacement, plus the exact linked transition operations through the
-  declarative edit-plan API;
-- replace one already-present video-clip Rotation value with a source-aware audit;
-- replace one already-present video-clip Position X/Y pair using Filmora's
-  visible pixel coordinates and the project timeline resolution;
-- replace one already-present linked uniform video-clip Scale X/Y pair in UI
-  percentages, preserving Filmora's floating-point JSON form;
-- replace one already-present audio-clip `VolumeGain` value with a source-aware
-  audit, without synthesizing Filmora's first-use audio effect graph;
-- replace one already-present positive audio-clip fade-in duration with a
-  source-aware audit, rejecting zero, negative, and over-duration values;
-- replace one already-present positive audio-clip fade-out duration with the
-  same copy-only and duration-bounded safety contract;
-- change or remove one already-present linked Dissolve/audio-fade pair with a
-  source-aware audit;
-- move one transition-free linked type-1/type-2 A/V pair within the already
-  declared project duration, rejecting same-track collisions and auditing the
-  exact four placement fields;
-- shorten either edge of one transition-free, forward 1x linked A/V pair while
-  auditing the matching timeline, source, and decimal speed-offset fields;
-- split one transition-free, forward 1x linked A/V pair while regenerating the
-  second halves' clip/effect IDs and shared opaque link ID;
-- discover, explain, and apply linked A/V moves, trims, and guarded splits
-  through the declarative edit-plan API.
-- replace one already-present horizontal- or vertical-flip effect state through
-  a Python copy-only writer. Declarative edit-plan exposure is intentionally
-  pending.
-- replace one already-present positive uniform corner-radius quartet within the
-  verified 1–100 range through a guarded Python writer. Zero-removal remains a
-  separate unsupported operation.
-- replace one already-present Anchor Point X/Y pair from Filmora pixel values
-  through the same resolution-aware conversion used by Position.
-- transcribe a recording with optional faster-whisper word timestamps, detect
-  silence with ffmpeg, remove exact and reworded earlier attempts including
-  grouped false-start fragments, flag unmatched short clips for review, and
-  write an auditable source-time rough-cut plan;
-- compare rough-cut keep ranges with a manually edited WFP and validate the
-  read-only shape of a single-pair seed project;
-- generate a new single-source Filmora rough cut from reviewed keep ranges,
-  assigning unique linked-pair and instance IDs, packing clips without timeline
-  gaps, updating project/media durations, and auditing the copy against its seed.
+Run `eval-format` on a real project from the target build before trusting a new
+version. Even a passing result establishes structural compatibility only. It
+does not replace the Filmora round trip.
 
-These narrow writers deliberately do not form a generic WFP writer. A generated copy
-must still be opened and saved in the exact Filmora build that created its template
-before it should be trusted for production editing.
+Tests use synthetic project fixtures. No real WFP project or source media is
+included in this repository.
 
-Published schemas 1 through 9 remain immutable. Schema version 10 adds existing
-uniform-scale replacement. Schema version 9 added video-clip position
-replacement without changing the earlier contracts.
+## Documentation
 
-The rough-cut writer is deliberately limited to one Filmora-created linked A/V
-seed pair with forward 1x media and the observed link-ID shape. A headless audit
-does not replace the exact-build Filmora open, Save As, and reopen check.
+- [Observed WFP structure](docs/format/README.md)
+- [Feature coverage](docs/feature-coverage.md)
+- [Reverse-engineering experiment protocol](docs/experiments.md)
+- [Declarative edit-plan API](docs/edit-plan-api.md)
+- [Rough-cut planning and generation](docs/rough-cut.md)
+- [Sanitized case studies](docs/case-studies/)
+- [Contributing](CONTRIBUTING.md)
 
-## Related work
+The repository is not affiliated with or endorsed by Wondershare. Filmora is a
+trademark of its respective owner.
 
-- [ItsQuesty/WFP-Renderer-bypass](https://github.com/ItsQuesty/WFP-Renderer-bypass)
-  is an early Filmora-to-FFmpeg renderer. Its parser is useful prior art, but its v1
-  model does not cover nested title timelines like the ones documented here.
-- [Filmora project documentation](https://filmora.wondershare.com/guide/create-a-project.html)
-  confirms that WFP files store edit decisions and external media references, but
-  does not publish a schema.
+## License
+
+Released under the [MIT License](LICENSE). Copyright 2026 Mike Cann.

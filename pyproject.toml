@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,7 +9,23 @@ description = "Inspect and safely automate Wondershare Filmora project files"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "Mike Cann" }]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["filmora", "video-editing", "wfp", "reverse-engineering"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Multimedia :: Video",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/mikecann/automate-filmora"
+Documentation = "https://github.com/mikecann/automate-filmora#readme"
+Issues = "https://github.com/mikecann/automate-filmora/issues"
+Repository = "https://github.com/mikecann/automate-filmora.git"
 
 [project.scripts]
 filmora-project = "filmora_wfp.cli:main"
